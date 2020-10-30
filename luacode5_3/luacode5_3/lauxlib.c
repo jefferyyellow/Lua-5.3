@@ -136,12 +136,14 @@ static void pushfuncname (lua_State *L, lua_Debug *ar) {
     lua_pushliteral(L, "?");
 }
 
-
+// 最大的堆栈层数
 static int lastlevel (lua_State *L) {
   lua_Debug ar;
   int li = 1, le = 1;
   /* find an upper bound */
+  // 成倍增加，2的指数次，找到第一次出错的level：le，和最后一次正确的level：li
   while (lua_getstack(L, le, &ar)) { li = le; le *= 2; }
+  // 在用2分法查找
   /* do a binary search */
   while (li < le) {
     int m = (li + le)/2;
@@ -151,11 +153,13 @@ static int lastlevel (lua_State *L) {
   return le - 1;
 }
 
-
+// 堆栈回溯
 LUALIB_API void luaL_traceback (lua_State *L, lua_State *L1,
                                 const char *msg, int level) {
   lua_Debug ar;
+  // 栈元素数目
   int top = lua_gettop(L);
+  // 最大堆栈层数
   int last = lastlevel(L1);
   int n1 = (last - level > LEVELS1 + LEVELS2) ? LEVELS1 : -1;
   if (msg)

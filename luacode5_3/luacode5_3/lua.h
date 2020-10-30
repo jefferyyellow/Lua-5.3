@@ -439,7 +439,10 @@ typedef struct lua_Debug lua_Debug;  /* activation record */
 /* Functions to be called by the debugger in specific events */
 typedef void (*lua_Hook) (lua_State *L, lua_Debug *ar);
 
-
+// 获取解释器的运行时栈的信息。
+// 这个函数用正在运行中的指定层次处函数的 活动记录 来填写 lua_Debug 结构的一部分。 
+// 0 层表示当前运行的函数， n + 1 层的函数就是调用第 n 层 （尾调用例外，它不算在栈层次中）
+// 函数的那一个。 如果没有错误， lua_getstack 返回 1 ； 当调用传入的层次大于堆栈深度的时候，返回 0 。
 LUA_API int (lua_getstack) (lua_State *L, int level, lua_Debug *ar);
 LUA_API int (lua_getinfo) (lua_State *L, const char *what, lua_Debug *ar);
 LUA_API const char *(lua_getlocal) (lua_State *L, const lua_Debug *ar, int n);
