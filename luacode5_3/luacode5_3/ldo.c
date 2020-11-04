@@ -804,16 +804,19 @@ static void checkmode (lua_State *L, const char *mode, const char *x) {
   }
 }
 
-
+// 分析源码
 static void f_parser (lua_State *L, void *ud) {
   LClosure *cl;
   struct SParser *p = cast(struct SParser *, ud);
+  // 得到了第一个字符
   int c = zgetc(p->z);  /* read first character */
+  // 二进制
   if (c == LUA_SIGNATURE[0]) {
     checkmode(L, p->mode, "binary");
     cl = luaU_undump(L, p->z, p->name);
   }
   else {
+	  // 文本方式
     checkmode(L, p->mode, "text");
     cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
   }
@@ -821,7 +824,7 @@ static void f_parser (lua_State *L, void *ud) {
   luaF_initupvals(L, cl);
 }
 
-
+// 被保护的分析函数
 int luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
                                         const char *mode) {
   struct SParser p;

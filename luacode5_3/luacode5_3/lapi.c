@@ -407,6 +407,12 @@ LUA_API int lua_toboolean (lua_State *L, int idx) {
 }
 
 // 将idx转换成字符串
+// 把给定索引处的 Lua 值转换为一个 C 字符串。 如果 len 不为 NULL ， 它还把字符串长度设到 *len 中。 
+// 这个 Lua 值必须是一个字符串或是一个数字； 否则返回返回 NULL 。 如果值是一个数字， 
+// lua_tolstring 还会 把堆栈中的那个值的实际类型转换为一个字符串。 （当遍历一张表的时候， 若把 lua_tolstring 作用在键上， 
+// 这个转换有可能导致 lua_next 弄错。）lua_tolstring 返回一个已对齐指针 指向 Lua 状态机中的字符串。 
+// 这个字符串总能保证 （ C 要求的）最后一个字符为零('\0') ， 而且它允许在字符串内包含多个这样的零。
+// 因为 Lua 中可能发生垃圾收集， 所以不保证 lua_tolstring 返回的指针， 在对应的值从堆栈中移除后依然有效。
 LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   StkId o = index2addr(L, idx);
   if (!ttisstring(o)) {

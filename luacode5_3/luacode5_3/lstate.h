@@ -105,6 +105,7 @@ typedef struct CallInfo {
     struct {  /* only for C functions */
       lua_KFunction k;  /* continuation in case of yields */
       ptrdiff_t old_errfunc;
+	  // 上下文信息
       lua_KContext ctx;  /* context info. in case of yields */
     } c;
   } u;
@@ -171,6 +172,7 @@ typedef struct global_State {
   int gcstepmul;  /* GC 'granularity' */
   lua_CFunction panic;  /* to be called in unprotected errors */
   struct lua_State *mainthread;
+  // 指向版本号的指针
   const lua_Number *version;  /* pointer to version number */
   TString *memerrmsg;  /* memory-error message */
   TString *tmname[TM_N];  /* array with tag-method names */
@@ -190,9 +192,12 @@ struct lua_State {
   lu_byte status;
   StkId top;  /* first free slot in the stack */
   global_State *l_G;
+  // 当前函数的调用信息
   CallInfo *ci;  /* call info for current function */
+  // 上一次追踪的pc
   const Instruction *oldpc;  /* last pc traced */
   StkId stack_last;  /* last free slot in the stack */
+  // 堆栈起始部分
   StkId stack;  /* stack base */
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;

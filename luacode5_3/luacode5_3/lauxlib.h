@@ -36,7 +36,7 @@ typedef struct luaL_Reg {
 
 
 #define LUAL_NUMSIZES	(sizeof(lua_Integer)*16 + sizeof(lua_Number))
-
+// 检查lua版本号
 LUALIB_API void (luaL_checkversion_) (lua_State *L, lua_Number ver, size_t sz);
 #define luaL_checkversion(L)  \
 	  luaL_checkversion_(L, LUA_VERSION_NUM, LUAL_NUMSIZES)
@@ -89,14 +89,17 @@ LUALIB_API int (luaL_loadfilex) (lua_State *L, const char *filename,
 LUALIB_API int (luaL_loadbufferx) (lua_State *L, const char *buff, size_t sz,
                                    const char *name, const char *mode);
 LUALIB_API int (luaL_loadstring) (lua_State *L, const char *s);
-
+// 创建一个新的 Lua 状态机。 它以一个基于标准 C 的 realloc 函数实现的内存分配器 调用 lua_newstate 。 
+// 并把可打印一些出错信息到标准错误输出的 panic 函数（参见 §4.6） 设置好，用于处理致命错误。
 LUALIB_API lua_State *(luaL_newstate) (void);
-
+// 以数字形式返回给定索引处值的“长度”； 它等价于在 Lua 中调用 '#' 的操作
+// 如果操作结果不是一个整数，则抛出一个错误。 （这种情况只发生在触发元方法时。）
 LUALIB_API lua_Integer (luaL_len) (lua_State *L, int idx);
-
+// 将字符串 s 生成一个副本， 并将其中的所有字符串 p 都替换为字符串 r 。 将结果串压栈并返回它。
 LUALIB_API const char *(luaL_gsub) (lua_State *L, const char *s, const char *p,
                                                   const char *r);
-
+// 把数组 l 中的所有函数 （参见 luaL_Reg） 注册到栈顶的表中（该表在可选的上值之下，见下面的解说）。
+// 若 nup 不为零， 所有的函数都共享 nup 个上值。 这些值必须在调用之前，压在表之上。 这些值在注册完毕后都会从栈弹出。
 LUALIB_API void (luaL_setfuncs) (lua_State *L, const luaL_Reg *l, int nup);
 
 LUALIB_API int (luaL_getsubtable) (lua_State *L, int idx, const char *fname);
@@ -134,9 +137,10 @@ LUALIB_API void (luaL_requiref) (lua_State *L, const char *modname,
 	(luaL_loadstring(L, s) || lua_pcall(L, 0, LUA_MULTRET, 0))
 
 #define luaL_getmetatable(L,n)	(lua_getfield(L, LUA_REGISTRYINDEX, (n)))
-
+// 如果栈上第n个值是nono或者nil，则返回d，否则返回调用f(L,(n))的结果
 #define luaL_opt(L,f,n,d)	(lua_isnoneornil(L,(n)) ? (d) : f(L,(n)))
-
+// 把一段缓存加载为一个 Lua 代码块。 这个函数使用 lua_load 来加载 buff 指向的长度为 sz 的内存区。
+// 这个函数和 lua_load 返回值相同。 name 作为代码块的名字，用于调试信息和错误消息。 mode 字符串的作用同函数 lua_load。
 #define luaL_loadbuffer(L,s,sz,n)	luaL_loadbufferx(L,s,sz,n,NULL)
 
 
@@ -165,6 +169,8 @@ LUALIB_API void (luaL_buffinit) (lua_State *L, luaL_Buffer *B);
 LUALIB_API char *(luaL_prepbuffsize) (luaL_Buffer *B, size_t sz);
 LUALIB_API void (luaL_addlstring) (luaL_Buffer *B, const char *s, size_t l);
 LUALIB_API void (luaL_addstring) (luaL_Buffer *B, const char *s);
+// 向缓存 B （参见 luaL_Buffer ） 添加栈顶的一个值，随后将其弹出。
+// 这个函数是操作字符串缓存的函数中，唯一一个会（且必须）在栈上放置额外元素的。 这个元素将被加入缓存。
 LUALIB_API void (luaL_addvalue) (luaL_Buffer *B);
 LUALIB_API void (luaL_pushresult) (luaL_Buffer *B);
 LUALIB_API void (luaL_pushresultsize) (luaL_Buffer *B, size_t sz);
@@ -205,6 +211,8 @@ typedef struct luaL_Stream {
 
 LUALIB_API void (luaL_pushmodule) (lua_State *L, const char *modname,
                                    int sizehint);
+// 查找或者创建给定名字的模块表。该函数首先查找LOADED表，如果失败，
+// 尝试具有该名字的全局变量，无论如何，将module表留在堆栈上
 LUALIB_API void (luaL_openlib) (lua_State *L, const char *libname,
                                 const luaL_Reg *l, int nup);
 

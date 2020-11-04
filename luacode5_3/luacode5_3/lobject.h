@@ -413,6 +413,7 @@ typedef struct LocVar {
 /*
 ** Function Prototypes
 */
+// 函数原型
 typedef struct Proto {
   CommonHeader;
   // 固定参数的数量
@@ -438,6 +439,7 @@ typedef struct Proto {
   // 从操作码到源代码的映射
   int *lineinfo;  /* map from opcodes to source lines (debug information) */
   LocVar *locvars;  /* information about local variables (debug information) */
+  // upvalue的信息
   Upvaldesc *upvalues;  /* upvalue information */
   struct LClosure *cache;  /* last-created closure with this prototype */
   // 源码

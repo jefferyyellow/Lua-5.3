@@ -41,13 +41,13 @@
 static const char *funcnamefromcode (lua_State *L, CallInfo *ci,
                                     const char **name);
 
-
+// 得到执行指令的地址
 static int currentpc (CallInfo *ci) {
   lua_assert(isLua(ci));
   return pcRel(ci->u.l.savedpc, ci_func(ci)->p);
 }
 
-
+// 得到源码的行信息
 static int currentline (CallInfo *ci) {
   return getfuncline(ci_func(ci)->p, currentpc(ci));
 }
@@ -59,9 +59,13 @@ static int currentline (CallInfo *ci) {
 ** purposes. (It exchanges 'func' and 'extra'; so, when called again,
 ** after debugging, it also "re-restores" ** 'func' to its altered value.
 */
+// 如果函数暂停，它的func放在extra字段中，为了调试的目的，下一个函数重新恢复func的值
+// （它交换“ func”和“ extra”；因此，当再次调用时，调试后，它还会将**'func'“恢复”到其更改后的值。
 static void swapextra (lua_State *L) {
   if (L->status == LUA_YIELD) {
+	// 得到当前函数的调用信息
     CallInfo *ci = L->ci;  /* get function that yielded */
+	// 交换ci->func和ci->extra
     StkId temp = ci->func;  /* exchange its 'func' and 'extra' values */
     ci->func = restorestack(L, ci->extra);
     ci->extra = savestack(L, temp);
@@ -78,20 +82,23 @@ static void swapextra (lua_State *L) {
 ** ensures that for all platforms where it runs). Moreover, 'hook' is
 ** always checked before being called (see 'luaD_hook').
 */
+// 设置钩子
 LUA_API void lua_sethook (lua_State *L, lua_Hook func, int mask, int count) {
   if (func == NULL || mask == 0) {  /* turn off hooks? */
     mask = 0;
     func = NULL;
   }
+  // 保存老的pc
   if (isLua(L->ci))
     L->oldpc = L->ci->u.l.savedpc;
+  // 设置钩子函数和次数
   L->hook = func;
   L->basehookcount = count;
   resethookcount(L);
   L->hookmask = cast_byte(mask);
 }
 
-
+// 得到钩子
 LUA_API lua_Hook lua_gethook (lua_State *L) {
   return L->hook;
 }
@@ -106,7 +113,7 @@ LUA_API int lua_gethookcount (lua_State *L) {
   return L->basehookcount;
 }
 
-
+// 得到指定level的堆栈信息
 LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   int status;
   CallInfo *ci;
@@ -123,7 +130,7 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   return status;
 }
 
-
+// 得到upvalue的名字
 static const char *upvalname (Proto *p, int uv) {
   TString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].name);
   if (s == NULL) return "?";
