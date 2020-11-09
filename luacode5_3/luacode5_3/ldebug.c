@@ -30,20 +30,22 @@
 #include "lvm.h"
 
 
-
+// 不是lua闭包和轻量级C函数
 #define noLuaClosure(f)		((f) == NULL || (f)->c.tt == LUA_TCCL)
 
 
 /* Active Lua function (given call info) */
+// 激活的lua函数，（给定的调用信息)
 #define ci_func(ci)		(clLvalue((ci)->func))
 
 
 static const char *funcnamefromcode (lua_State *L, CallInfo *ci,
                                     const char **name);
 
-// 得到执行指令的地址
+// 得到执行指令的地址（当前指令到函数开始地址的距离）
 static int currentpc (CallInfo *ci) {
   lua_assert(isLua(ci));
+  // 返回当前指令到函数开始地址的距离
   return pcRel(ci->u.l.savedpc, ci_func(ci)->p);
 }
 
@@ -103,12 +105,12 @@ LUA_API lua_Hook lua_gethook (lua_State *L) {
   return L->hook;
 }
 
-
+// 得到钩子的掩码
 LUA_API int lua_gethookmask (lua_State *L) {
   return L->hookmask;
 }
 
-
+// 得到钩子数量
 LUA_API int lua_gethookcount (lua_State *L) {
   return L->basehookcount;
 }
@@ -119,8 +121,11 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
   lua_lock(L);
+  // 搜索指定层级的函数调用
   for (ci = L->ci; level > 0 && ci != &L->base_ci; ci = ci->previous)
     level--;
+
+  // 是否找到对应的堆栈信息
   if (level == 0 && ci != &L->base_ci) {  /* level found? */
     status = 1;
     ar->i_ci = ci;
@@ -137,9 +142,10 @@ static const char *upvalname (Proto *p, int uv) {
   else return getstr(s);
 }
 
-
+// 找到对应的可变参数
 static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
   int nparams = clLvalue(ci->func)->p->numparams;
+  // 是否超出参数数量
   if (n >= cast_int(ci->u.l.base - ci->func) - nparams)
     return NULL;  /* no such vararg */
   else {
@@ -154,6 +160,7 @@ static const char *findlocal (lua_State *L, CallInfo *ci, int n,
   const char *name = NULL;
   StkId base;
   if (isLua(ci)) {
+	  // 找参数的值
     if (n < 0)  /* access to vararg values? */
       return findvararg(ci, -n, pos);
     else {
@@ -232,8 +239,11 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
   luaO_chunkid(ar->short_src, ar->source, LUA_IDSIZE);
 }
 
-
+// 
+// 注意：Closure是一个C闭包和lua闭包的联合体
+// 得到lua的代码行信息
 static void collectvalidlines (lua_State *L, Closure *f) {
+	// C闭包
   if (noLuaClosure(f)) {
     setnilvalue(L->top);
     api_incr_top(L);
@@ -241,31 +251,36 @@ static void collectvalidlines (lua_State *L, Closure *f) {
   else {
     int i;
     TValue v;
+	// 得到代码行信息
     int *lineinfo = f->l.p->lineinfo;
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue(L, L->top, t);  /* push it on stack */
     api_incr_top(L);
+	// 设置v为1
     setbvalue(&v, 1);  /* boolean 'true' to be the value of all indices */
+	// 设置table[line] = true 
     for (i = 0; i < f->l.p->sizelineinfo; i++)  /* for all lines with code */
       luaH_setint(L, t, lineinfo[i], &v);  /* table[line] = true */
   }
 }
 
-
+// 得到函数的名字
 static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
   if (ci == NULL)  /* no 'ci'? */
     return NULL;  /* no info */
+  // 终结器
   else if (ci->callstatus & CIST_FIN) {  /* is this a finalizer? */
     *name = "__gc";
     return "metamethod";  /* report it as such */
   }
+  // 不是尾调用，并且前一个是lua函数
   /* calling function is a known Lua function? */
   else if (!(ci->callstatus & CIST_TAIL) && isLua(ci->previous))
     return funcnamefromcode(L, ci->previous, name);
   else return NULL;  /* no way to find a name */
 }
 
-
+// 得到对应信息
 static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
                        Closure *f, CallInfo *ci) {
   int status = 1;
@@ -291,6 +306,7 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         }
         break;
       }
+	  // 是否是尾调用
       case 't': {
         ar->istailcall = (ci) ? ci->callstatus & CIST_TAIL : 0;
         break;
@@ -320,11 +336,15 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
   StkId func;
   lua_lock(L);
   swapextra(L);
+  // 函数
   if (*what == '>') {
     ci = NULL;
+	// 从栈顶上取得函数
     func = L->top - 1;
+	// 检查是否是函数
     api_check(L, ttisfunction(func), "function expected");
     what++;  /* skip the '>' */
+	// 函数出栈
     L->top--;  /* pop function */
   }
   else {
@@ -333,12 +353,15 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
     lua_assert(ttisfunction(ci->func));
   }
   cl = ttisclosure(func) ? clvalue(func) : NULL;
+  // 得到栈的信息
   status = auxgetinfo(L, what, ar, cl, ci);
+  // 是否需要将函数返回
   if (strchr(what, 'f')) {
     setobjs2s(L, L->top, func);
     api_incr_top(L);
   }
   swapextra(L);  /* correct before option 'L', which can raise a mem. error */
+  // 得到代码行信息
   if (strchr(what, 'L'))
     collectvalidlines(L, cl);
   lua_unlock(L);
@@ -434,7 +457,7 @@ static int findsetreg (Proto *p, int lastpc, int reg) {
   return setreg;
 }
 
-
+// 得到实例的名字
 static const char *getobjname (Proto *p, int lastpc, int reg,
                                const char **name) {
   int pc;
@@ -495,25 +518,35 @@ static const char *getobjname (Proto *p, int lastpc, int reg,
 ** Returns what the name is (e.g., "for iterator", "method",
 ** "metamethod") and sets '*name' to point to the name.
 */
+// 尝试根据调用函数的代码查找函数的名称。
+// （仅当函数被lua函数调用时有作用）
+// 
 static const char *funcnamefromcode (lua_State *L, CallInfo *ci,
                                      const char **name) {
   TMS tm = (TMS)0;  /* (initial value avoids warnings) */
+  // 取出函数原型
   Proto *p = ci_func(ci)->p;  /* calling function */
+  // 得到当前指令到函数开始处的距离
   int pc = currentpc(ci);  /* calling instruction index */
+  // 得到当前的指令
   Instruction i = p->code[pc];  /* calling instruction */
+  // 调试钩子
   if (ci->callstatus & CIST_HOOKED) {  /* was it called inside a hook? */
     *name = "?";
     return "hook";
   }
+  // 得到操作码
   switch (GET_OPCODE(i)) {
     case OP_CALL:
     case OP_TAILCALL:
       return getobjname(p, pc, GETARG_A(i), name);  /* get function name */
+	  // 迭代器
     case OP_TFORCALL: {  /* for iterator */
       *name = "for iterator";
        return "for iterator";
     }
     /* other instructions can do calls through metamethods */
+	// 其他的指令调用通过元方法
     case OP_SELF: case OP_GETTABUP: case OP_GETTABLE:
       tm = TM_INDEX;
       break;

@@ -176,13 +176,18 @@ LUALIB_API void luaL_traceback (lua_State *L, lua_State *L1,
       level = last - LEVELS2 + 1;  /* and skip to last ones */
     }
     else {
-		// 
+		// 得到堆栈信息
       lua_getinfo(L1, "Slnt", &ar);
+	  // 描述
       lua_pushfstring(L, "\n\t%s:", ar.short_src);
+	  // 行号信息
       if (ar.currentline > 0)
         lua_pushfstring(L, "%d:", ar.currentline);
+	  // 
       lua_pushliteral(L, " in ");
+	  // 文件名
       pushfuncname(L, &ar);
+	  // 是否是尾调用
       if (ar.istailcall)
         lua_pushliteral(L, "\n\t(...tail calls...)");
       lua_concat(L, lua_gettop(L) - top);
@@ -217,7 +222,7 @@ LUALIB_API int luaL_argerror (lua_State *L, int arg, const char *extramsg) {
                         arg, ar.name, extramsg);
 }
 
-
+// 类型错误
 static int typeerror (lua_State *L, int arg, const char *tname) {
   const char *msg;
   const char *typearg;  /* name for the type of the actual argument */
@@ -243,8 +248,11 @@ static void tag_error (lua_State *L, int arg, int tag) {
 */
 LUALIB_API void luaL_where (lua_State *L, int level) {
   lua_Debug ar;
+  // 得到指定level的堆栈
   if (lua_getstack(L, level, &ar)) {  /* check function at level */
+	  // 得到堆栈的信息
     lua_getinfo(L, "Sl", &ar);  /* get info about it */
+	// 如果有对应的行信息，压入堆栈
     if (ar.currentline > 0) {  /* is there info? */
       lua_pushfstring(L, "%s:%d: ", ar.short_src, ar.currentline);
       return;
@@ -259,29 +267,36 @@ LUALIB_API void luaL_where (lua_State *L, int level) {
 ** not need reserved stack space when called. (At worst, it generates
 ** an error with "stack overflow" instead of the given message.)
 */
+// 同样，当调用‘lua_pushvfstring’时，它的用法保证了该函数不需要预留栈空间
+// （最坏的情况下，它通过产生一个“栈溢出”的错误来替代给出错误信息）
 LUALIB_API int luaL_error (lua_State *L, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   luaL_where(L, 1);
+  // 格式化字符串并压栈
   lua_pushvfstring(L, fmt, argp);
   va_end(argp);
   lua_concat(L, 2);
   return lua_error(L);
 }
 
-
+// 这个函数用于生成标准库中和文件相关的函数的返回值。 （指 (io.open， os.rename， file:seek，等。)。
 LUALIB_API int luaL_fileresult (lua_State *L, int stat, const char *fname) {
   int en = errno;  /* calls to Lua API may change this value */
+  // 如果状态不为0,将1压栈
   if (stat) {
     lua_pushboolean(L, 1);
     return 1;
   }
   else {
+	  // 如果状态为0,将nil压栈
     lua_pushnil(L);
+	// 出错原因压栈
     if (fname)
       lua_pushfstring(L, "%s: %s", fname, strerror(en));
     else
       lua_pushstring(L, strerror(en));
+	// 错误码压栈
     lua_pushinteger(L, en);
     return 3;
   }
@@ -297,8 +312,12 @@ LUALIB_API int luaL_fileresult (lua_State *L, int stat, const char *fname) {
 /*
 ** use appropriate macros to interpret 'pclose' return status
 */
+// 使用合适的宏解释'pclose'返回状态
+
 #define l_inspectstat(stat,what)  \
+	// WIFEXITED 取出的字段值非零 -> 正常终止， WEXITSTATUS 取出的字段值就是子进程的退出状态
    if (WIFEXITED(stat)) { stat = WEXITSTATUS(stat); } \
+	//WIFSIGNALED 取出的字段值非零-> 异常终止， WTERMSIG 取出的字段值就是信号的编号
    else if (WIFSIGNALED(stat)) { stat = WTERMSIG(stat); what = "signal"; }
 
 #else
@@ -315,9 +334,12 @@ LUALIB_API int luaL_execresult (lua_State *L, int stat) {
   if (stat == -1)  /* error? */
     return luaL_fileresult(L, 0, NULL);
   else {
+	  // 解释退出状态
     l_inspectstat(stat, what);  /* interpret result */
+	// 正常退出
     if (*what == 'e' && stat == 0)  /* successful termination? */
       lua_pushboolean(L, 1);
+	// 异常退出
     else
       lua_pushnil(L);
     lua_pushstring(L, what);
@@ -353,8 +375,9 @@ LUALIB_API int luaL_newmetatable (lua_State *L, const char *tname) {
 
 // 将注册表中 tname 关联元表 （参见 luaL_newmetatable） 设为栈顶对象的元表。
 LUALIB_API void luaL_setmetatable (lua_State *L, const char *tname) {
-	// 得到元表
+  // 得到元表
   luaL_getmetatable(L, tname);
+  // 设置原来栈顶对象的元表
   lua_setmetatable(L, -2);
 }
 

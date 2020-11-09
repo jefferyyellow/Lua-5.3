@@ -120,14 +120,18 @@ typedef struct CallInfo {
 ** Bits in CallInfo status
 */
 #define CIST_OAH	(1<<0)	/* original value of 'allowhook' */
+// 调用一个lua函数
 #define CIST_LUA	(1<<1)	/* call is running a Lua function */
+// 调用调试钩子
 #define CIST_HOOKED	(1<<2)	/* call is running a debug hook */
 #define CIST_FRESH	(1<<3)	/* call is running on a fresh invocation
                                    of luaV_execute */
 #define CIST_YPCALL	(1<<4)	/* call is a yieldable protected call */
+// 调用是否是尾调用
 #define CIST_TAIL	(1<<5)	/* call was tail called */
 #define CIST_HOOKYIELD	(1<<6)	/* last hook called yielded */
 #define CIST_LEQ	(1<<7)  /* using __lt for __le */
+// 调用一个终结器
 #define CIST_FIN	(1<<8)  /* call is running a finalizer */
 
 #define isLua(ci)	((ci)->callstatus & CIST_LUA)

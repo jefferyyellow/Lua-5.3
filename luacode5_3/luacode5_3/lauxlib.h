@@ -72,6 +72,7 @@ LUALIB_API int (luaL_checkoption) (lua_State *L, int arg, const char *def,
                                    const char *const lst[]);
 
 LUALIB_API int (luaL_fileresult) (lua_State *L, int stat, const char *fname);
+// 这个函数用于生成标准库中和进程相关函数的返回值。 （指 os.execute 和 io.close）。
 LUALIB_API int (luaL_execresult) (lua_State *L, int stat);
 
 /* predefined references */

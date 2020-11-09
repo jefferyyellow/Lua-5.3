@@ -464,7 +464,7 @@ typedef struct UpVal UpVal;
 // C闭包
 typedef struct CClosure {
   ClosureHeader;
-  lua_CFunction f;
+  lua_CFunction f;	  //  C 函数
   TValue upvalue[1];  /* list of upvalues */
 } CClosure;
 
@@ -472,7 +472,7 @@ typedef struct CClosure {
 // Lua闭包
 typedef struct LClosure {
   ClosureHeader;
-  struct Proto *p;
+  struct Proto *p;	// Lua函数原型
   // upvalues列表
   UpVal *upvals[1];  /* list of upvalues */
 } LClosure;
