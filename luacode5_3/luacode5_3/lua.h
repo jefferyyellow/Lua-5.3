@@ -39,6 +39,7 @@
 ** (-LUAI_MAXSTACK is the minimum valid index; we keep some free empty
 ** space after that to help overflow detection)
 */
+// æ³¨å†Œè¡¨ç´¢å¼•
 #define LUA_REGISTRYINDEX	(-LUAI_MAXSTACK - 1000)
 #define lua_upvalueindex(i)	(LUA_REGISTRYINDEX - (i))
 
@@ -76,15 +77,15 @@ typedef struct lua_State lua_State;
 
 
 /* minimum Lua stack available to a C function */
-// Cº¯Êı¿ÉÓÃµÄ×îĞ¡Lua¶ÑÕ»
+// Cå‡½æ•°å¯ç”¨çš„æœ€å°Luaå †æ ˆ
 #define LUA_MINSTACK	20
 
 
 /* predefined values in the registry */
-// ×¢²á±íÀïÔ¤¶¨ÒåµÄÖµ
-// Ö÷Ïß³ÌµÄË÷Òı
+// æ³¨å†Œè¡¨é‡Œé¢„å®šä¹‰çš„å€¼
+// ä¸»çº¿ç¨‹çš„ç´¢å¼•
 #define LUA_RIDX_MAINTHREAD	1
-// È«¾Ö±íµÄË÷Òı
+// å…¨å±€è¡¨çš„ç´¢å¼•
 #define LUA_RIDX_GLOBALS	2
 #define LUA_RIDX_LAST		LUA_RIDX_GLOBALS
 
@@ -159,27 +160,27 @@ LUA_API const lua_Number *(lua_version) (lua_State *L);
 /*
 ** basic stack manipulation
 */
-// ½«Ò»¸ö¿É½ÓÊÜµÄË÷Òı idx ×ª»»Îª¾ø¶ÔË÷Òı
+// å°†ä¸€ä¸ªå¯æ¥å—çš„ç´¢å¼• idx è½¬æ¢ä¸ºç»å¯¹ç´¢å¼•
 LUA_API int   (lua_absindex) (lua_State *L, int idx);
-// ·µ»ØÕ»¶¥ÔªËØµÄË÷Òı¡£ ÒòÎªË÷ÒıÊÇ´Ó 1 ¿ªÊ¼±àºÅµÄ£¬ 
-// ËùÒÔÕâ¸ö½á¹ûµÈÓÚÕ»ÉÏµÄÔªËØ¸öÊı£» ÌØ±ğÖ¸³ö£¬0 ±íÊ¾Õ»Îª¿Õ¡£
+// è¿”å›æ ˆé¡¶å…ƒç´ çš„ç´¢å¼•ã€‚ å› ä¸ºç´¢å¼•æ˜¯ä» 1 å¼€å§‹ç¼–å·çš„ï¼Œ 
+// æ‰€ä»¥è¿™ä¸ªç»“æœç­‰äºæ ˆä¸Šçš„å…ƒç´ ä¸ªæ•°ï¼› ç‰¹åˆ«æŒ‡å‡ºï¼Œ0 è¡¨ç¤ºæ ˆä¸ºç©ºã€‚
 LUA_API int   (lua_gettop) (lua_State *L);
-// ²ÎÊıÔÊĞí´«ÈëÈÎºÎË÷ÒıÒÔ¼° 0 ¡£ Ëü½«°Ñ¶ÑÕ»µÄÕ»¶¥ÉèÎªÕâ¸öË÷Òı¡£ Èç¹ûĞÂµÄÕ»¶¥±ÈÔ­À´µÄ´ó£¬ 
-// ³¬³ö²¿·ÖµÄĞÂÔªËØ½«±»ÌîÎª nil ¡£ Èç¹û index Îª 0 £¬ °ÑÕ»ÉÏËùÓĞÔªËØÒÆ³ı¡£
+// å‚æ•°å…è®¸ä¼ å…¥ä»»ä½•ç´¢å¼•ä»¥åŠ 0 ã€‚ å®ƒå°†æŠŠå †æ ˆçš„æ ˆé¡¶è®¾ä¸ºè¿™ä¸ªç´¢å¼•ã€‚ å¦‚æœæ–°çš„æ ˆé¡¶æ¯”åŸæ¥çš„å¤§ï¼Œ 
+// è¶…å‡ºéƒ¨åˆ†çš„æ–°å…ƒç´ å°†è¢«å¡«ä¸º nil ã€‚ å¦‚æœ index ä¸º 0 ï¼Œ æŠŠæ ˆä¸Šæ‰€æœ‰å…ƒç´ ç§»é™¤ã€‚
 LUA_API void  (lua_settop) (lua_State *L, int idx);
-// ½«index¶ÔÓ¦µÄÖµ¿½±´Ò»·İµ½Õ»¶¥£¬È»ºó×ÔÔöÕ»¶¥
+// å°†indexå¯¹åº”çš„å€¼æ‹·è´ä¸€ä»½åˆ°æ ˆé¡¶ï¼Œç„¶åè‡ªå¢æ ˆé¡¶
 LUA_API void  (lua_pushvalue) (lua_State *L, int idx);
-// °Ñ´Ó idx ¿ªÊ¼µ½Õ»¶¥µÄÔªËØÂÖ×ª n ¸öÎ»ÖÃ¡£ ¶ÔÓÚ n ÎªÕıÊıÊ±£¬ÂÖ×ª·½ÏòÊÇÏòÕ»¶¥µÄ£» 
-// µ± n Îª¸ºÊıÊ±£¬ÏòÕ»µ×·½ÏòÂÖ×ª -n ¸öÎ»ÖÃ¡£ n µÄ¾ø¶ÔÖµ²»¿ÉÒÔ±È²ÎÓÚÂÖ×ªµÄÇĞÆ¬³¤¶È´ó¡£
-// ×îºóË÷ÒıÎªnµÄÔªËØ±ä³ÉÁËÕ»¶¥ÔªËØ
+// æŠŠä» idx å¼€å§‹åˆ°æ ˆé¡¶çš„å…ƒç´ è½®è½¬ n ä¸ªä½ç½®ã€‚ å¯¹äº n ä¸ºæ­£æ•°æ—¶ï¼Œè½®è½¬æ–¹å‘æ˜¯å‘æ ˆé¡¶çš„ï¼› 
+// å½“ n ä¸ºè´Ÿæ•°æ—¶ï¼Œå‘æ ˆåº•æ–¹å‘è½®è½¬ -n ä¸ªä½ç½®ã€‚ n çš„ç»å¯¹å€¼ä¸å¯ä»¥æ¯”å‚äºè½®è½¬çš„åˆ‡ç‰‡é•¿åº¦å¤§ã€‚
+// æœ€åç´¢å¼•ä¸ºnçš„å…ƒç´ å˜æˆäº†æ ˆé¡¶å…ƒç´ 
 LUA_API void  (lua_rotate) (lua_State *L, int idx, int n);
-// ´ÓË÷Òı fromidx ´¦¸´ÖÆÒ»¸öÖµµ½Ò»¸öÓĞĞ§Ë÷Òı toidx ´¦£¬¸²¸ÇÄÇÀïµÄÔ­ÓĞÖµ¡£ ²»»áÓ°ÏìÆäËüÎ»ÖÃµÄÖµ¡£
+// ä»ç´¢å¼• fromidx å¤„å¤åˆ¶ä¸€ä¸ªå€¼åˆ°ä¸€ä¸ªæœ‰æ•ˆç´¢å¼• toidx å¤„ï¼Œè¦†ç›–é‚£é‡Œçš„åŸæœ‰å€¼ã€‚ ä¸ä¼šå½±å“å…¶å®ƒä½ç½®çš„å€¼ã€‚
 LUA_API void  (lua_copy) (lua_State *L, int fromidx, int toidx);
-// È·±£¶ÑÕ»ÉÏÖÁÉÙÓĞ n ¸ö¶îÍâ¿ÕÎ»¡£ Èç¹û²»ÄÜ°Ñ¶ÑÕ»À©Õ¹µ½ÏàÓ¦µÄ³ß´ç£¬º¯Êı·µ»Ø¼Ù¡£ Ê§°ÜµÄÔ­Òò°üÀ¨½«°ÑÕ»À©Õ¹µ½±È¹Ì¶¨×î´ó³ß´ç»¹´ó 
-// £¨ÖÁÉÙÊÇ¼¸Ç§¸öÔªËØ£©»ò·ÖÅäÄÚ´æÊ§°Ü¡£ Õâ¸öº¯ÊıÓÀÔ¶²»»áËõĞ¡¶ÑÕ»£» Èç¹û¶ÑÕ»ÒÑ¾­±ÈĞèÒªµÄ´óÁË£¬ÄÇÃ´¾Í±£³ÖÔ­Ñù¡£
+// ç¡®ä¿å †æ ˆä¸Šè‡³å°‘æœ‰ n ä¸ªé¢å¤–ç©ºä½ã€‚ å¦‚æœä¸èƒ½æŠŠå †æ ˆæ‰©å±•åˆ°ç›¸åº”çš„å°ºå¯¸ï¼Œå‡½æ•°è¿”å›å‡ã€‚ å¤±è´¥çš„åŸå› åŒ…æ‹¬å°†æŠŠæ ˆæ‰©å±•åˆ°æ¯”å›ºå®šæœ€å¤§å°ºå¯¸è¿˜å¤§ 
+// ï¼ˆè‡³å°‘æ˜¯å‡ åƒä¸ªå…ƒç´ ï¼‰æˆ–åˆ†é…å†…å­˜å¤±è´¥ã€‚ è¿™ä¸ªå‡½æ•°æ°¸è¿œä¸ä¼šç¼©å°å †æ ˆï¼› å¦‚æœå †æ ˆå·²ç»æ¯”éœ€è¦çš„å¤§äº†ï¼Œé‚£ä¹ˆå°±ä¿æŒåŸæ ·ã€‚
 LUA_API int   (lua_checkstack) (lua_State *L, int n);
-// ½»»»Í¬Ò»¸ö×´Ì¬»úÏÂ²»Í¬Ïß³ÌÖĞµÄÖµ¡£
-// Õâ¸öº¯Êı»á´Ó from µÄÕ»ÉÏµ¯³ö n ¸öÖµ£¬ È»ºó°ÑËüÃÇÑ¹Èë to µÄÕ»ÉÏ¡£
+// äº¤æ¢åŒä¸€ä¸ªçŠ¶æ€æœºä¸‹ä¸åŒçº¿ç¨‹ä¸­çš„å€¼ã€‚
+// è¿™ä¸ªå‡½æ•°ä¼šä» from çš„æ ˆä¸Šå¼¹å‡º n ä¸ªå€¼ï¼Œ ç„¶åæŠŠå®ƒä»¬å‹å…¥ to çš„æ ˆä¸Šã€‚
 LUA_API void  (lua_xmove) (lua_State *from, lua_State *to, int n);
 
 
@@ -276,7 +277,7 @@ LUA_API void  (lua_setglobal) (lua_State *L, const char *name);
 LUA_API void  (lua_settable) (lua_State *L, int idx);
 LUA_API void  (lua_setfield) (lua_State *L, int idx, const char *k);
 LUA_API void  (lua_seti) (lua_State *L, int idx, lua_Integer n);
-// Õ»Ë÷ÒıidxµÄÎª±í£¬L->top - 2Îª¼ü£¬L->top - 1ÎªÖµ, ÉèÖÃ:±í[¼ü]=Öµ
+// æ ˆç´¢å¼•idxçš„ä¸ºè¡¨ï¼ŒL->top - 2ä¸ºé”®ï¼ŒL->top - 1ä¸ºå€¼, è®¾ç½®:è¡¨[é”®]=å€¼
 LUA_API void  (lua_rawset) (lua_State *L, int idx);
 LUA_API void  (lua_rawseti) (lua_State *L, int idx, lua_Integer n);
 LUA_API void  (lua_rawsetp) (lua_State *L, int idx, const void *p);
@@ -358,7 +359,7 @@ LUA_API void      (lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
 
 #define lua_tonumber(L,i)	lua_tonumberx(L,(i),NULL)
 #define lua_tointeger(L,i)	lua_tointegerx(L,(i),NULL)
-// ´ÓÕ»ÖĞµ¯³ö n ¸öÔªËØ¡£
+// ä»æ ˆä¸­å¼¹å‡º n ä¸ªå…ƒç´ ã€‚
 #define lua_pop(L,n)		lua_settop(L, -(n)-1)
 
 #define lua_newtable(L)		lua_createtable(L, 0, 0)
@@ -374,9 +375,9 @@ LUA_API void      (lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
 #define lua_isboolean(L,n)	(lua_type(L, (n)) == LUA_TBOOLEAN)
 #define lua_isthread(L,n)	(lua_type(L, (n)) == LUA_TTHREAD)
 #define lua_isnone(L,n)		(lua_type(L, (n)) == LUA_TNONE)
-// Õ»ÉÏnµÄÖµÊÇ·ñÊÇnone»òÕßnil
+// æ ˆä¸Šnçš„å€¼æ˜¯å¦æ˜¯noneæˆ–è€…nil
 #define lua_isnoneornil(L, n)	(lua_type(L, (n)) <= 0)
-// Õâ¸öºêµÈ¼ÛÓÚ lua_pushstring£¬ Çø±ğ½öÔÚÓÚÖ»ÄÜÔÚ s ÊÇÒ»¸ö×ÖÃæÁ¿Ê±²ÅÄÜÓÃËü¡£ Ëü»á×Ô¶¯¸ø³ö×Ö·û´®µÄ³¤¶È¡£
+// è¿™ä¸ªå®ç­‰ä»·äº lua_pushstringï¼Œ åŒºåˆ«ä»…åœ¨äºåªèƒ½åœ¨ s æ˜¯ä¸€ä¸ªå­—é¢é‡æ—¶æ‰èƒ½ç”¨å®ƒã€‚ å®ƒä¼šè‡ªåŠ¨ç»™å‡ºå­—ç¬¦ä¸²çš„é•¿åº¦ã€‚
 #define lua_pushliteral(L, s)	lua_pushstring(L, "" s)
 
 #define lua_pushglobaltable(L)  \
@@ -384,12 +385,12 @@ LUA_API void      (lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
 
 #define lua_tostring(L,i)	lua_tolstring(L, (i), NULL)
 
-// °ÑÕ»¶¥ÔªËØÒÆ¶¯µ½Ö¸¶¨µÄÓĞĞ§Ë÷Òı´¦£¬ ÒÀ´ÎÒÆ¶¯Õâ¸öË÷ÒıÖ®ÉÏµÄÔªËØ¡£ 
-// ²»ÒªÓÃÎ±Ë÷ÒıÀ´µ÷ÓÃÕâ¸öº¯Êı£¬ ÒòÎªÎ±Ë÷ÒıÃ»ÓĞÕæÕıÖ¸ÏòÕ»ÉÏµÄÎ»ÖÃ¡£
+// æŠŠæ ˆé¡¶å…ƒç´ ç§»åŠ¨åˆ°æŒ‡å®šçš„æœ‰æ•ˆç´¢å¼•å¤„ï¼Œ ä¾æ¬¡ç§»åŠ¨è¿™ä¸ªç´¢å¼•ä¹‹ä¸Šçš„å…ƒç´ ã€‚ 
+// ä¸è¦ç”¨ä¼ªç´¢å¼•æ¥è°ƒç”¨è¿™ä¸ªå‡½æ•°ï¼Œ å› ä¸ºä¼ªç´¢å¼•æ²¡æœ‰çœŸæ­£æŒ‡å‘æ ˆä¸Šçš„ä½ç½®ã€‚
 #define lua_insert(L,idx)	lua_rotate(L, (idx), 1)
-// ´Ó¶ÑÕ»ÖĞÉ¾³ıÖ¸¶¨Ë÷ÒıµÄÖµ£¨½«idxµÄÖµĞı×ªµ½Õ»¶¥£¬È»ºó³öÕ»£©
+// ä»å †æ ˆä¸­åˆ é™¤æŒ‡å®šç´¢å¼•çš„å€¼ï¼ˆå°†idxçš„å€¼æ—‹è½¬åˆ°æ ˆé¡¶ï¼Œç„¶åå‡ºæ ˆï¼‰
 #define lua_remove(L,idx)	(lua_rotate(L, (idx), -1), lua_pop(L, 1))
-// °ÑÕ»¶¥ÔªËØ·ÅÖÃµ½¸ø¶¨Î»ÖÃ¶ø²»ÒÆ¶¯ÆäËüÔªËØ £¨Òò´Ë¸²¸ÇÁËÄÇ¸öÎ»ÖÃ´¦µÄÖµ£©£¬È»ºó½«Õ»¶¥ÔªËØµ¯³ö¡£
+// æŠŠæ ˆé¡¶å…ƒç´ æ”¾ç½®åˆ°ç»™å®šä½ç½®è€Œä¸ç§»åŠ¨å…¶å®ƒå…ƒç´  ï¼ˆå› æ­¤è¦†ç›–äº†é‚£ä¸ªä½ç½®å¤„çš„å€¼ï¼‰ï¼Œç„¶åå°†æ ˆé¡¶å…ƒç´ å¼¹å‡ºã€‚
 #define lua_replace(L,idx)	(lua_copy(L, -1, (idx)), lua_pop(L, 1))
 
 /* }============================================================== */
@@ -440,10 +441,10 @@ typedef struct lua_Debug lua_Debug;  /* activation record */
 /* Functions to be called by the debugger in specific events */
 typedef void (*lua_Hook) (lua_State *L, lua_Debug *ar);
 
-// »ñÈ¡½âÊÍÆ÷µÄÔËĞĞÊ±Õ»µÄĞÅÏ¢¡£
-// Õâ¸öº¯ÊıÓÃÕıÔÚÔËĞĞÖĞµÄÖ¸¶¨²ã´Î´¦º¯ÊıµÄ »î¶¯¼ÇÂ¼ À´ÌîĞ´ lua_Debug ½á¹¹µÄÒ»²¿·Ö¡£ 
-// 0 ²ã±íÊ¾µ±Ç°ÔËĞĞµÄº¯Êı£¬ n + 1 ²ãµÄº¯Êı¾ÍÊÇµ÷ÓÃµÚ n ²ã £¨Î²µ÷ÓÃÀıÍâ£¬Ëü²»ËãÔÚÕ»²ã´ÎÖĞ£©
-// º¯ÊıµÄÄÇÒ»¸ö¡£ Èç¹ûÃ»ÓĞ´íÎó£¬ lua_getstack ·µ»Ø 1 £» µ±µ÷ÓÃ´«ÈëµÄ²ã´Î´óÓÚ¶ÑÕ»Éî¶ÈµÄÊ±ºò£¬·µ»Ø 0 ¡£
+// è·å–è§£é‡Šå™¨çš„è¿è¡Œæ—¶æ ˆçš„ä¿¡æ¯ã€‚
+// è¿™ä¸ªå‡½æ•°ç”¨æ­£åœ¨è¿è¡Œä¸­çš„æŒ‡å®šå±‚æ¬¡å¤„å‡½æ•°çš„ æ´»åŠ¨è®°å½• æ¥å¡«å†™ lua_Debug ç»“æ„çš„ä¸€éƒ¨åˆ†ã€‚ 
+// 0 å±‚è¡¨ç¤ºå½“å‰è¿è¡Œçš„å‡½æ•°ï¼Œ n + 1 å±‚çš„å‡½æ•°å°±æ˜¯è°ƒç”¨ç¬¬ n å±‚ ï¼ˆå°¾è°ƒç”¨ä¾‹å¤–ï¼Œå®ƒä¸ç®—åœ¨æ ˆå±‚æ¬¡ä¸­ï¼‰
+// å‡½æ•°çš„é‚£ä¸€ä¸ªã€‚ å¦‚æœæ²¡æœ‰é”™è¯¯ï¼Œ lua_getstack è¿”å› 1 ï¼› å½“è°ƒç”¨ä¼ å…¥çš„å±‚æ¬¡å¤§äºå †æ ˆæ·±åº¦çš„æ—¶å€™ï¼Œè¿”å› 0 ã€‚
 LUA_API int (lua_getstack) (lua_State *L, int level, lua_Debug *ar);
 LUA_API int (lua_getinfo) (lua_State *L, const char *what, lua_Debug *ar);
 LUA_API const char *(lua_getlocal) (lua_State *L, const lua_Debug *ar, int n);

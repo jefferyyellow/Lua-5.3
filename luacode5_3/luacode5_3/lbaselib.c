@@ -444,7 +444,9 @@ static int luaB_xpcall (lua_State *L) {
 
 
 static int luaB_tostring (lua_State *L) {
+  // 检查堆栈索引1的类型
   luaL_checkany(L, 1);
+  // 将堆栈索引1的值转换成字符串然后压栈
   luaL_tolstring(L, 1, NULL);
   return 1;
 }
@@ -485,12 +487,16 @@ static const luaL_Reg base_funcs[] = {
 
 LUAMOD_API int luaopen_base (lua_State *L) {
   /* open lib into global table */
+   // 得到全局表放在栈顶
   lua_pushglobaltable(L);
+  // 将base_funcs注册在全局表中
   luaL_setfuncs(L, base_funcs, 0);
   /* set global _G */
+  // 将全局表中的_G设置为-1
   lua_pushvalue(L, -1);
   lua_setfield(L, -2, "_G");
   /* set global _VERSION */
+  // 设置全局表中的_VERSION 为LUA_VERSION的值
   lua_pushliteral(L, LUA_VERSION);
   lua_setfield(L, -2, "_VERSION");
   return 1;
