@@ -222,10 +222,13 @@ static int pairsmeta (lua_State *L, const char *method, int iszero,
   return 3;
 }
 
-
+// 下一个
 static int luaB_next (lua_State *L) {
+    // 第一个参数是表
   luaL_checktype(L, 1, LUA_TTABLE);
+  // 如果没有就创建第二个参数
   lua_settop(L, 2);  /* create a 2nd argument if there isn't one */
+  // 下一个
   if (lua_next(L, 1))
     return 2;
   else {
@@ -243,8 +246,11 @@ static int luaB_pairs (lua_State *L) {
 /*
 ** Traversal function for 'ipairs'
 */
+// ipairs的遍历函数
 static int ipairsaux (lua_State *L) {
+  // 得到第二个参数，然后加1
   lua_Integer i = luaL_checkinteger(L, 2) + 1;
+  // 压入参数
   lua_pushinteger(L, i);
   return (lua_geti(L, 1, i) == LUA_TNIL) ? 1 : 2;
 }
@@ -254,39 +260,54 @@ static int ipairsaux (lua_State *L) {
 ** 'ipairs' function. Returns 'ipairsaux', given "table", 0.
 ** (The given "table" may not be a table.)
 */
+// 'ipairs'函数。返回给定表的‘ipairsaux’，0.
+// 该给定“表”可能不是表
 static int luaB_ipairs (lua_State *L) {
 #if defined(LUA_COMPAT_IPAIRS)
   return pairsmeta(L, "__ipairs", 1, ipairsaux);
 #else
+  // 检查确定有一个参数
   luaL_checkany(L, 1);
+  // 将辅助函数压参
   lua_pushcfunction(L, ipairsaux);  /* iteration function */
+  // 将lua_State压参
   lua_pushvalue(L, 1);  /* state */
+  // 还要初始化值
   lua_pushinteger(L, 0);  /* initial value */
   return 3;
 #endif
 }
 
 
+// 加载辅助函数
 static int load_aux (lua_State *L, int status, int envidx) {
+    // 加载正确
   if (status == LUA_OK) {
+    // ‘环境’参数
     if (envidx != 0) {  /* 'env' parameter? */
+      // 压入环境索引
       lua_pushvalue(L, envidx);  /* environment for loaded function */
       if (!lua_setupvalue(L, -2, 1))  /* set it as 1st upvalue */
         lua_pop(L, 1);  /* remove 'env' if not used by previous call */
     }
     return 1;
   }
+  // 加载出错，错误信息在堆栈顶部
   else {  /* error (message is on top of the stack) */
     lua_pushnil(L);
+    // 将nil放在堆栈顶部的前面
     lua_insert(L, -2);  /* put before error message */
     return 2;  /* return nil plus error message */
   }
 }
 
-
+// 加载文件
 static int luaB_loadfile (lua_State *L) {
+    // 第一个文件名
   const char *fname = luaL_optstring(L, 1, NULL);
+  // 第二个模式
   const char *mode = luaL_optstring(L, 2, NULL);
+  // 环境索引
   int env = (!lua_isnone(L, 3) ? 3 : 0);  /* 'env' index or 0 if no 'env' */
   int status = luaL_loadfilex(L, fname, mode);
   return load_aux(L, status, env);
@@ -305,6 +326,8 @@ static int luaB_loadfile (lua_State *L) {
 ** string to avoid it being collected while parsed. 'load' has four
 ** optional arguments (chunk, source name, mode, and environment).
 */
+// 预留的插槽，在所有的参数上面，用于保存返回的副本字符串，以避免在解析时被收集。
+// “负载”有四个可选参数（块，源名称，模式和环境）
 #define RESERVEDSLOT	5
 
 
@@ -314,37 +337,56 @@ static int luaB_loadfile (lua_State *L) {
 ** stack top. Instead, it keeps its resulting string in a
 ** reserved slot inside the stack.
 */
+// 一般load函数的Reader：lua_load使用内部stuff的堆栈，所以reader不能改变堆栈顶部。
+// 相反，而是将其结果字符串保存在堆栈内部的预留插槽。
 static const char *generic_reader (lua_State *L, void *ud, size_t *size) {
   (void)(ud);  /* not used */
+  // 保证堆栈上有两个空位
   luaL_checkstack(L, 2, "too many nested functions");
+  // 得到值
   lua_pushvalue(L, 1);  /* get function */
+  // 调用
   lua_call(L, 0, 1);  /* call it */
+  // 如果栈顶是nil
   if (lua_isnil(L, -1)) {
     lua_pop(L, 1);  /* pop result */
     *size = 0;
     return NULL;
   }
+  // 如果有值，只能是字符串
   else if (!lua_isstring(L, -1))
     luaL_error(L, "reader function must return a string");
+  // 将栈顶的字符串替换到预留的slot
   lua_replace(L, RESERVEDSLOT);  /* save string in reserved slot */
+  // 返回加载的字符串
   return lua_tolstring(L, RESERVEDSLOT, size);
 }
 
-
+// load的本质就是在Lua代码中运行一段存储在字符串中的代码
 static int luaB_load (lua_State *L) {
   int status;
   size_t l;
+  // 得到索引为1的字符串，将长度存在l中
   const char *s = lua_tolstring(L, 1, &l);
+  // 得到索引为3的字符串，若字符串不存在或者为nil，使用默认的模式"bt"
   const char *mode = luaL_optstring(L, 3, "bt");
+  // 得到环境索引
   int env = (!lua_isnone(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
+  // 如果字符串不为空
   if (s != NULL) {  /* loading a string? */
+    // 取出块的名字
     const char *chunkname = luaL_optstring(L, 2, s);
+    // 加载
     status = luaL_loadbufferx(L, s, l, chunkname, mode);
   }
+  // 从一个reader函数中加载
   else {  /* loading from a reader function */
+     // 块名为"=(load)"
     const char *chunkname = luaL_optstring(L, 2, "=(load)");
+    // index为1的是函数
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
+    // 加载
     status = lua_load(L, generic_reader, NULL, chunkname, mode);
   }
   return load_aux(L, status, env);
@@ -352,47 +394,67 @@ static int luaB_load (lua_State *L) {
 
 /* }====================================================== */
 
-
+// 返回参数
 static int dofilecont (lua_State *L, int d1, lua_KContext d2) {
   (void)d1;  (void)d2;  /* only to match 'lua_Kfunction' prototype */
   return lua_gettop(L) - 1;
 }
 
-
+// 加载文件并且执行文件中的代码
 static int luaB_dofile (lua_State *L) {
+    // 文件名，luaL_optstring：如果函数的第 arg 个参数是一个 字符串，返回该字符串。 若该参数不存在或是 nil，
   const char *fname = luaL_optstring(L, 1, NULL);
+  // 只保留这个文件名的参数
   lua_settop(L, 1);
+  // 加载文件
   if (luaL_loadfile(L, fname) != LUA_OK)
     return lua_error(L);
+  // 执行代码
   lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
   return dofilecont(L, 0, 0);
 }
 
-
+// 断言
 static int luaB_assert (lua_State *L) {
+  // 将第一个参数转换成bool，如果是true，就返回所有参数
   if (lua_toboolean(L, 1))  /* condition is true? */
     return lua_gettop(L);  /* return all arguments */
+  // 出错了
   else {  /* error */
+    // 这个必须是个条件
     luaL_checkany(L, 1);  /* there must be a condition */
+    // 将条件删除了
     lua_remove(L, 1);  /* remove it */
+    // 压参“assertion failed!”的提示信息
     lua_pushliteral(L, "assertion failed!");  /* default message */
+    // 只留下错误消息
     lua_settop(L, 1);  /* leave only message (default if no other one) */
+    // 调用错误函数
     return luaB_error(L);  /* call 'error' */
   }
 }
 
-
+// select(n, ...)  --数字n表示起点，select(n, ...)返回从起点n到结束的可变参数，比如：
+// n = 3，... 是 0，1，2，3，4，5
+// 则 select(n, ...) 就表示...中从第3个到最后一个的多个数：2，3，4，5。并且2，3，4，5是4个数，不是列表或其他的数据结构
+// 所以， 下面的代码中，a = select(3, ...) 就表示的是  a = 2, 3, 4, 5。所以，a = 2;
 static int luaB_select (lua_State *L) {
   int n = lua_gettop(L);
+ // 如果第一个参数是#，那就返回可变参数的数目，n-1中的-1表示将#这个参数排除
   if (lua_type(L, 1) == LUA_TSTRING && *lua_tostring(L, 1) == '#') {
     lua_pushinteger(L, n-1);
     return 1;
   }
   else {
+      // 取得第一个参数，并转换成整数
     lua_Integer i = luaL_checkinteger(L, 1);
+    // 从栈顶开始算
     if (i < 0) i = n + i;
+    // 从栈底开始算
     else if (i > n) i = n;
+    // 范围检查
     luaL_argcheck(L, 1 <= i, 1, "index out of range");
+    // 其实不需要改变堆栈，只需要返回对应的堆栈上的栈顶的数个值
     return n - (int)i;
   }
 }
@@ -405,21 +467,30 @@ static int luaB_select (lua_State *L) {
 ** 'extra' values (where 'extra' is exactly the number of items to be
 ** ignored).
 */
+// “ pcall”和“ xpcall”的延续功能。 两种功能在调用之前就已经压入了“ true”，因此在成功的情况下
+// 'finishpcall'只需要返回堆栈中的所有内容减去'extra'值（其中'extra'恰好是要忽略）。
 static int finishpcall (lua_State *L, int status, lua_KContext extra) {
+    // 如果不是成功或者暂停，就是出错了
   if (status != LUA_OK && status != LUA_YIELD) {  /* error? */
+    // 压入false
     lua_pushboolean(L, 0);  /* first result (false) */
+    // 和出错的消息
     lua_pushvalue(L, -2);  /* error message */
     return 2;  /* return false, msg */
   }
   else
+    // 返回所有的结果，就是堆栈上的值数目坚强额外的
     return lua_gettop(L) - (int)extra;  /* return all results */
 }
 
 
 static int luaB_pcall (lua_State *L) {
   int status;
+  // 堆栈索引1的位置是否有参数
   luaL_checkany(L, 1);
+  // 压入一个true
   lua_pushboolean(L, 1);  /* first result if no errors */
+  // 将栈顶的bool值插入堆栈索引1的位置
   lua_insert(L, 1);  /* put it in place */
   status = lua_pcallk(L, lua_gettop(L) - 2, LUA_MULTRET, 0, 0, finishpcall);
   return finishpcall(L, status, 0);
@@ -431,13 +502,24 @@ static int luaB_pcall (lua_State *L) {
 ** stack will have <f, err, true, f, [args...]>; so, the function passes
 ** 2 to 'finishpcall' to skip the 2 first values when returning results.
 */
+// 使用错误处理保护的call。 在“ lua_rotate”之后，
+// 堆栈将具有<f，err，true，f，[args ...]>; 因此，该函数通过了
+// 2到“ finishpcall”以返回结果时跳过前两个值。
 static int luaB_xpcall (lua_State *L) {
   int status;
+  // 在堆栈顶部得到参数个数
   int n = lua_gettop(L);
+  // 第二个参数是否为函数（错误处理函数）
   luaL_checktype(L, 2, LUA_TFUNCTION);  /* check error function */
+  // 返回结果
   lua_pushboolean(L, 1);  /* first result */
+  // 函数值
   lua_pushvalue(L, 1);  /* function */
+
+  // <f, err, [args...],true, f>;通过lua_rotate(L, 3, 2)后，将最后的2个看成一个整体，
+  // 插入堆栈索引为3的位置，就变成了<f, err, true, f,[args...]>;
   lua_rotate(L, 3, 2);  /* move them below function's arguments */
+  // 调用函数,注意，这里的参数变成了n-2,就是将原来的f和err两个函数度过滤掉
   status = lua_pcallk(L, n - 2, LUA_MULTRET, 2, 2, finishpcall);
   return finishpcall(L, status, 2);
 }

@@ -142,120 +142,135 @@ extern "C"
 //
 
 
-class CBase
-{
-public:
-	CBase(){}
-	~CBase(){}
+// ------------------ lua_thinker test ------------------ 
+//
+//class CBase
+//{
+//public:
+//	CBase(){}
+//	~CBase(){}
+//
+//public:
+//	const char* IsBase(){ return "this is Base";}
+//	int GetBaseValue() const { return mBaseValue; }
+//	void SetBaseValue(int nValue) { mBaseValue = nValue; }
+//	int mBaseValue;
+//};
+//
+//class CObject
+//{
+//public:
+//	CObject()
+//	{
+//		mValue = 0;
+//	}
+//	~CObject(){}
+//
+//public:
+//	int GetValue() const { return mValue; }
+//	void SetValue(int nValue) { mValue = nValue; }
+//
+//private:
+//	int mValue;
+//};
+//class CTest : public CBase
+//{
+//public:
+//	typedef CObject& (CTest::*GetObjectType)();
+//
+//public:
+//	CTest(int nVal) : mValue(nVal){}
+//	~CTest(){}
+//
+//public:
+//	const char* IsTest(){ return "this is Test"; }
+//	void RetVoid(){}
+//	int RetInt(){ return mValue; }
+//	int RetMul(int m){return mValue * m;}
+//	int GetValue(){return mValue;}
+//	void SetValue(int nValue){mValue = nValue;}
+//	CObject& GetObject(){return mObject;}
+//	int* GetArray()
+//	{
+//		//printf("%p", mArray);
+//		return mArray;
+//	}
+//	int GetArrayByIndex(int nIndex)
+//	{
+//		return mArray[nIndex];
+//	}
+//
+//	int mValue;
+//	int mArray[100];
+//	CObject		mObject;
+//};
+//
+//void paramObject(CTest& rTest)
+//{
+//	//printf("%d\n", rTest.GetValue());
+//	rTest.SetValue(820);
+//}
+//
+//void changeValue(int* pValue)
+//{
+//	pValue[0] = 1024;
+//	pValue[1] = 10256;
+//	pValue[2] = 23434;
+//}
+//
+//int main()
+//{
+//	lua_State *L = luaL_newstate();
+//	if (NULL == L)
+//	{
+//		printf("bad luaL_newstate");
+//		return -1;
+//	}
+//	luaL_openlibs(L);
+//
+//	lua_tinker::class_add<CBase>(L, "CBase");
+//	lua_tinker::class_con<CBase>(L, lua_tinker::constructor<CBase>);
+//	lua_tinker::class_mem<CBase>(L, "mBaseValue", &CBase::mBaseValue);
+//	lua_tinker::class_def<CBase>(L, "IsBase", &CBase::IsBase);
+//	lua_tinker::class_def<CBase>(L, "GetBaseValue", &CBase::GetBaseValue);
+//	lua_tinker::class_def<CBase>(L, "SetBaseValue", &CBase::SetBaseValue);
+//
+//	lua_tinker::class_add<CTest>(L, "CTest");
+//	lua_tinker::class_inh<CTest, CBase>(L);
+//	lua_tinker::class_con<CTest>(L, lua_tinker::constructor<CTest, int>);
+//	
+//	lua_tinker::class_mem<CTest>(L, "mValue", &CTest::mValue);
+//	lua_tinker::class_def<CTest>(L, "IsTest", &CTest::IsTest);
+//	lua_tinker::class_def<CTest>(L, "RetInt", &CTest::RetInt);
+//	lua_tinker::class_def<CTest>(L, "RetMul", &CTest::RetMul);
+//	lua_tinker::class_def<CTest>(L, "GetValue", &CTest::GetValue);
+//	lua_tinker::class_def<CTest>(L, "SetValue", &CTest::SetValue);
+//	lua_tinker::class_def<CTest>(L, "GetObject", &CTest::GetObject);
+//	lua_tinker::class_def<CTest>(L, "GetArray", &CTest::GetArray);
+//	lua_tinker::class_def<CTest>(L, "GetArrayByIndex", &CTest::GetArrayByIndex);
+//
+//
+//	lua_tinker::class_add<CObject>(L, "CObject");
+//	lua_tinker::class_def<CObject>(L, "SetValue", &CObject::SetValue);
+//	lua_tinker::class_def<CObject>(L, "GetValue", &CObject::GetValue);
+//
+//
+//	lua_tinker::def(L, "paramObject", &paramObject);
+//	lua_tinker::def(L, "changeValue", &changeValue);
+//
+//	lua_tinker::dofile(L, "lua_tinker.lua");
+//	lua_close(L);
+//}
+//
+// ------------------ lua_thinker test ------------------ 
 
-public:
-	const char* IsBase(){ return "this is Base";}
-	int GetBaseValue() const { return mBaseValue; }
-	void SetBaseValue(int nValue) { mBaseValue = nValue; }
-	int mBaseValue;
-};
-
-class CObject
-{
-public:
-	CObject()
-	{
-		mValue = 0;
-	}
-	~CObject(){}
-
-public:
-	int GetValue() const { return mValue; }
-	void SetValue(int nValue) { mValue = nValue; }
-
-private:
-	int mValue;
-};
-class CTest : public CBase
-{
-public:
-	typedef CObject& (CTest::*GetObjectType)();
-
-public:
-	CTest(int nVal) : mValue(nVal){}
-	~CTest(){}
-
-public:
-	const char* IsTest(){ return "this is Test"; }
-	void RetVoid(){}
-	int RetInt(){ return mValue; }
-	int RetMul(int m){return mValue * m;}
-	int GetValue(){return mValue;}
-	void SetValue(int nValue){mValue = nValue;}
-	CObject& GetObject(){return mObject;}
-	int* GetArray()
-	{
-		//printf("%p", mArray);
-		return mArray;
-	}
-	int GetArrayByIndex(int nIndex)
-	{
-		return mArray[nIndex];
-	}
-
-	int mValue;
-	int mArray[100];
-	CObject		mObject;
-};
-
-void paramObject(CTest& rTest)
-{
-	//printf("%d\n", rTest.GetValue());
-	rTest.SetValue(820);
-}
-
-void changeValue(int* pValue)
-{
-	pValue[0] = 1024;
-	pValue[1] = 10256;
-	pValue[2] = 23434;
-}
 
 int main()
 {
-	lua_State *L = luaL_newstate();
-	if (NULL == L)
-	{
-		printf("bad luaL_newstate");
-		return -1;
-	}
+	char buff[256];
+	int error;
+	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 
-	lua_tinker::class_add<CBase>(L, "CBase");
-	lua_tinker::class_con<CBase>(L, lua_tinker::constructor<CBase>);
-	lua_tinker::class_mem<CBase>(L, "mBaseValue", &CBase::mBaseValue);
-	lua_tinker::class_def<CBase>(L, "IsBase", &CBase::IsBase);
-	lua_tinker::class_def<CBase>(L, "GetBaseValue", &CBase::GetBaseValue);
-	lua_tinker::class_def<CBase>(L, "SetBaseValue", &CBase::SetBaseValue);
-
-	lua_tinker::class_add<CTest>(L, "CTest");
-	lua_tinker::class_inh<CTest, CBase>(L);
-	lua_tinker::class_con<CTest>(L, lua_tinker::constructor<CTest, int>);
-	
-	lua_tinker::class_mem<CTest>(L, "mValue", &CTest::mValue);
-	lua_tinker::class_def<CTest>(L, "IsTest", &CTest::IsTest);
-	lua_tinker::class_def<CTest>(L, "RetInt", &CTest::RetInt);
-	lua_tinker::class_def<CTest>(L, "RetMul", &CTest::RetMul);
-	lua_tinker::class_def<CTest>(L, "GetValue", &CTest::GetValue);
-	lua_tinker::class_def<CTest>(L, "SetValue", &CTest::SetValue);
-	lua_tinker::class_def<CTest>(L, "GetObject", &CTest::GetObject);
-	lua_tinker::class_def<CTest>(L, "GetArray", &CTest::GetArray);
-	lua_tinker::class_def<CTest>(L, "GetArrayByIndex", &CTest::GetArrayByIndex);
-
-
-	lua_tinker::class_add<CObject>(L, "CObject");
-	lua_tinker::class_def<CObject>(L, "SetValue", &CObject::SetValue);
-	lua_tinker::class_def<CObject>(L, "GetValue", &CObject::GetValue);
-
-
-	lua_tinker::def(L, "paramObject", &paramObject);
-	lua_tinker::def(L, "changeValue", &changeValue);
-
-	lua_tinker::dofile(L, "lua_tinker.lua");
-	lua_close(L);
+	luaL_dofile(L, "luatest.lua");
 }

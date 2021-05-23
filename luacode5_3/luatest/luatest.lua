@@ -11,3 +11,5 @@ print(#a)
 
 -- 设置全局变量
 global_c_read_val = "------test_global_value------"
+
+xpcall(1,2,3,4,5,6,7,8,9,10)

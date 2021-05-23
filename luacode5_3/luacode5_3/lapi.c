@@ -229,9 +229,8 @@ static void reverse (lua_State *L, StkId from, StkId to) {
 // 作用类似将栈看作成一个队列，将队头的元素放在队伍，重复n的效果一样
 // 栈底方向  1，2，3，4，5，6，7，8，9，10  栈顶方向
 // 如果idx为2，n为7
-// reverse(L, p, m):1,2,3,8,7,6,5,4,9,10    
-// reverse(L, m + 1, t):1,2,3,8,7,6,5,4,10,9
-// reverse(L, p, t):1,2,3,9,10,4,5,6,7,8
+// 结果是：  1，4，5，6，7，8，9，10，2，3
+// 就是将4，5，6，7，8，9，10看成一个整体，调整到2(index)这个地方
 
 
 LUA_API void lua_rotate (lua_State *L, int idx, int n) {
@@ -1061,7 +1060,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   return status;
 }
 
-// 加载
+// 加载一段 Lua 代码块，但不运行它。 如果没有错误， lua_load 把一个编译好的代码块作为一个 Lua 函数压到栈顶。 否则，压入错误消息。
 LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
                       const char *chunkname, const char *mode) {
   ZIO z;
