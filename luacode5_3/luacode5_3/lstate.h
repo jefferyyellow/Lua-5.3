@@ -64,7 +64,7 @@ struct lua_longjmp;  /* defined in ldo.c */
 /* extra stack space to handle TM calls and some other extras */
 #define EXTRA_STACK   5
 
-// »ù±¾µÄÕ»´óĞ¡
+// åŸºæœ¬çš„æ ˆå¤§å°
 #define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
 
 
@@ -90,27 +90,27 @@ typedef struct stringtable {
 ** function can be called with the correct top.
 */
 typedef struct CallInfo {
-  // Õ»¶ÔÓ¦µÄº¯Êı
+  // æ ˆå¯¹åº”çš„å‡½æ•°
   StkId func;  /* function index in the stack */
-  // º¯ÊıµÄÕ»¶¥
+  // å‡½æ•°çš„æ ˆé¡¶
   StkId	top;  /* top for this function */
   struct CallInfo *previous, *next;  /* dynamic call link */
   union {
     struct {  /* only for Lua functions */
-		// Õ»µ×£¬Õû¸ö¶ÑÕ»µÄ´«ÈË²ÎÊı²¿·Ö¿ªÊ¼
+		// æ ˆåº•ï¼Œæ•´ä¸ªå †æ ˆçš„ä¼ äººå‚æ•°éƒ¨åˆ†å¼€å§‹
       StkId base;  /* base for this function */
-	  // µ±Ç°Ö´ĞĞµÄÖ¸ÁîµØÖ·
+	  // å½“å‰æ‰§è¡Œçš„æŒ‡ä»¤åœ°å€
       const Instruction *savedpc;
     } l;
     struct {  /* only for C functions */
       lua_KFunction k;  /* continuation in case of yields */
       ptrdiff_t old_errfunc;
-	  // ÉÏÏÂÎÄĞÅÏ¢
+	  // ä¸Šä¸‹æ–‡ä¿¡æ¯
       lua_KContext ctx;  /* context info. in case of yields */
     } c;
   } u;
   ptrdiff_t extra;
-  // º¯ÊıµÄÆÚÍû·µ»ØÖµÊıÄ¿
+  // å‡½æ•°çš„æœŸæœ›è¿”å›å€¼æ•°ç›®
   short nresults;  /* expected number of results from this function */
   unsigned short callstatus;
 } CallInfo;
@@ -120,18 +120,18 @@ typedef struct CallInfo {
 ** Bits in CallInfo status
 */
 #define CIST_OAH	(1<<0)	/* original value of 'allowhook' */
-// µ÷ÓÃÒ»¸öluaº¯Êı
+// è°ƒç”¨ä¸€ä¸ªluaå‡½æ•°
 #define CIST_LUA	(1<<1)	/* call is running a Lua function */
-// µ÷ÓÃµ÷ÊÔ¹³×Ó
+// è°ƒç”¨è°ƒè¯•é’©å­
 #define CIST_HOOKED	(1<<2)	/* call is running a debug hook */
 #define CIST_FRESH	(1<<3)	/* call is running on a fresh invocation
                                    of luaV_execute */
 #define CIST_YPCALL	(1<<4)	/* call is a yieldable protected call */
-// µ÷ÓÃÊÇ·ñÊÇÎ²µ÷ÓÃ
+// è°ƒç”¨æ˜¯å¦æ˜¯å°¾è°ƒç”¨
 #define CIST_TAIL	(1<<5)	/* call was tail called */
 #define CIST_HOOKYIELD	(1<<6)	/* last hook called yielded */
 #define CIST_LEQ	(1<<7)  /* using __lt for __le */
-// µ÷ÓÃÒ»¸öÖÕ½áÆ÷
+// è°ƒç”¨ä¸€ä¸ªç»ˆç»“å™¨
 #define CIST_FIN	(1<<8)  /* call is running a finalizer */
 
 #define isLua(ci)	((ci)->callstatus & CIST_LUA)
@@ -144,9 +144,9 @@ typedef struct CallInfo {
 /*
 ** 'global state', shared by all threads of this state
 */
-// È«¾Ö×´Ì¬£¬ËùÓĞµÄÏß³Ì¶¼¹²Ïí¸Ã×´Ì¬
+// å…¨å±€çŠ¶æ€ï¼Œæ‰€æœ‰çš„çº¿ç¨‹éƒ½å…±äº«è¯¥çŠ¶æ€
 typedef struct global_State {
-	// ·ÖÅäÄÚ´æµÄº¯Êı
+	// åˆ†é…å†…å­˜çš„å‡½æ•°
   lua_Alloc frealloc;  /* function to reallocate memory */
   void *ud;         /* auxiliary data to 'frealloc' */
   l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
@@ -176,7 +176,7 @@ typedef struct global_State {
   int gcstepmul;  /* GC 'granularity' */
   lua_CFunction panic;  /* to be called in unprotected errors */
   struct lua_State *mainthread;
-  // Ö¸Ïò°æ±¾ºÅµÄÖ¸Õë
+  // æŒ‡å‘ç‰ˆæœ¬å·çš„æŒ‡é’ˆ
   const lua_Number *version;  /* pointer to version number */
   TString *memerrmsg;  /* memory-error message */
   TString *tmname[TM_N];  /* array with tag-method names */
@@ -188,26 +188,27 @@ typedef struct global_State {
 /*
 ** 'per thread' state
 */
-// Ã¿¸öÏß³ÌµÄ×´Ì¬
+// æ¯ä¸ªçº¿ç¨‹çš„çŠ¶æ€
 struct lua_State {
   CommonHeader;
-  // µ÷ÓÃĞÅÏ¢µÄÊıÄ¿
+  // è°ƒç”¨ä¿¡æ¯çš„æ•°ç›®
   unsigned short nci;  /* number of items in 'ci' list */
+  // çŠ¶æ€ï¼šè¿è¡Œï¼ŒæŒ‚èµ·
   lu_byte status;
   StkId top;  /* first free slot in the stack */
   global_State *l_G;
-  // µ±Ç°º¯ÊıµÄµ÷ÓÃĞÅÏ¢
+  // å½“å‰å‡½æ•°çš„è°ƒç”¨ä¿¡æ¯
   CallInfo *ci;  /* call info for current function */
-  // ÉÏÒ»´Î×·×ÙµÄpc
+  // ä¸Šä¸€æ¬¡è¿½è¸ªçš„pc
   const Instruction *oldpc;  /* last pc traced */
   StkId stack_last;  /* last free slot in the stack */
-  // ¶ÑÕ»ÆğÊ¼²¿·Ö
+  // å †æ ˆèµ·å§‹éƒ¨åˆ†
   StkId stack;  /* stack base */
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   struct lua_State *twups;  /* list of threads with open upvalues */
   struct lua_longjmp *errorJmp;  /* current error recover point */
-  // µÚÒ»²ãµÄµ÷ÓÃĞÅÏ¢(Cµ÷ÓÃLua)
+  // ç¬¬ä¸€å±‚çš„è°ƒç”¨ä¿¡æ¯(Cè°ƒç”¨Lua)
   CallInfo base_ci;  /* CallInfo for first level (C calling Lua) */
   volatile lua_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
@@ -227,7 +228,7 @@ struct lua_State {
 /*
 ** Union of all collectable objects (only for conversions)
 */
-// ËùÓĞµÄÀ¬»øÊÕ¼¯Æ÷¹ÜÀíµÄÊµÌåµÄÁªºÏÌå
+// æ‰€æœ‰çš„åƒåœ¾æ”¶é›†å™¨ç®¡ç†çš„å®ä½“çš„è”åˆä½“
 union GCUnion {
   GCObject gc;  /* common header */
   struct TString ts;

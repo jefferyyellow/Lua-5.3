@@ -20,21 +20,28 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-
+// 打印参数
 static int luaB_print (lua_State *L) {
+  // 得到参数数目
   int n = lua_gettop(L);  /* number of arguments */
   int i;
+  // 得到全局的tostring函数
   lua_getglobal(L, "tostring");
   for (i=1; i<=n; i++) {
     const char *s;
     size_t l;
+    // 复制一份tostring的全局函数
     lua_pushvalue(L, -1);  /* function to be called */
+    // 复制一份参数
     lua_pushvalue(L, i);   /* value to print */
+    // 调用转换成string
     lua_call(L, 1, 1);
     s = lua_tolstring(L, -1, &l);  /* get result */
     if (s == NULL)
       return luaL_error(L, "'tostring' must return a string to 'print'");
+    // 参数之间加上tab
     if (i>1) lua_writestring("\t", 1);
+    // 写入参数转换的string
     lua_writestring(s, l);
     lua_pop(L, 1);  /* pop result */
   }
@@ -45,37 +52,49 @@ static int luaB_print (lua_State *L) {
 
 #define SPACECHARS	" \f\n\r\t\v"
 
+// 将一个字符串转换为整形
 static const char *b_str2int (const char *s, int base, lua_Integer *pn) {
   lua_Unsigned n = 0;
   int neg = 0;
+  // 先跳过空格
   s += strspn(s, SPACECHARS);  /* skip initial spaces */
+  // 解析正负符号
   if (*s == '-') { s++; neg = 1; }  /* handle signal */
   else if (*s == '+') s++;
+
+  // 是否字母或者数字，不是的话，直接返回NULL
   if (!isalnum((unsigned char)*s))  /* no digit? */
     return NULL;
   do {
+      // 根据字符和进制转换
     int digit = (isdigit((unsigned char)*s)) ? *s - '0'
                    : (toupper((unsigned char)*s) - 'A') + 10;
     if (digit >= base) return NULL;  /* invalid numeral */
     n = n * base + digit;
     s++;
   } while (isalnum((unsigned char)*s));
+  // 跳过尾部的空格
   s += strspn(s, SPACECHARS);  /* skip trailing spaces */
+  // 根据正负进行修正
   *pn = (lua_Integer)((neg) ? (0u - n) : n);
   return s;
 }
 
-
+// 转换成数字
 static int luaB_tonumber (lua_State *L) {
+    // 如果第二个参数为none或者nil，那就是标准转换
   if (lua_isnoneornil(L, 2)) {  /* standard conversion? */
     luaL_checkany(L, 1);
+    // 如果已经是数字，直接返回
     if (lua_type(L, 1) == LUA_TNUMBER) {  /* already a number? */
       lua_settop(L, 1);  /* yes; return it */
       return 1;
     }
     else {
       size_t l;
+      // 先转换为字符串
       const char *s = lua_tolstring(L, 1, &l);
+      // 在转换为数字
       if (s != NULL && lua_stringtonumber(L, s) == l + 1)
         return 1;  /* successful conversion to number */
       /* else not a number */
@@ -85,100 +104,139 @@ static int luaB_tonumber (lua_State *L) {
     size_t l;
     const char *s;
     lua_Integer n = 0;  /* to avoid warnings */
+    // 将第二个参数（进制）转换为整数
     lua_Integer base = luaL_checkinteger(L, 2);
+    // 查看第一个参数是否为字符串
     luaL_checktype(L, 1, LUA_TSTRING);  /* no numbers as strings */
+    // 转换成一个字符串
     s = lua_tolstring(L, 1, &l);
+    // 检查进制范围是否正常
     luaL_argcheck(L, 2 <= base && base <= 36, 2, "base out of range");
+    // 将字符串转换为整数
     if (b_str2int(s, (int)base, &n) == s + l) {
+      // 压入栈顶
       lua_pushinteger(L, n);
       return 1;
     }  /* else not a number */
   }  /* else not a number */
+  // 转换不了就返回nil
   lua_pushnil(L);  /* not a number */
   return 1;
 }
 
 
 static int luaB_error (lua_State *L) {
+   // 得到堆栈上的地方二个参数，如果没有或者为nil，就返回1
   int level = (int)luaL_optinteger(L, 2, 1);
+  // 设置栈顶
   lua_settop(L, 1);
+  // 第一个参数是字符串
   if (lua_type(L, 1) == LUA_TSTRING && level > 0) {
+    // 将堆栈行的信息压栈
     luaL_where(L, level);   /* add extra information */
+    // 将错误信息再一次压栈
     lua_pushvalue(L, 1);
+    // 将堆栈上栈顶的2个字符串连接在一起
     lua_concat(L, 2);
   }
   return lua_error(L);
 }
 
-
+// 得到元表
 static int luaB_getmetatable (lua_State *L) {
   luaL_checkany(L, 1);
+  // 没有元表
   if (!lua_getmetatable(L, 1)) {
     lua_pushnil(L);
     return 1;  /* no metatable */
   }
+  // 得到元表中的字段
   luaL_getmetafield(L, 1, "__metatable");
   return 1;  /* returns either __metatable field (if present) or metatable */
 }
 
-
+// 设置元表
 static int luaB_setmetatable (lua_State *L) {
+  // 获得第二个参数的类型
   int t = lua_type(L, 2);
+  // 第一个参数是表
   luaL_checktype(L, 1, LUA_TTABLE);
   luaL_argcheck(L, t == LUA_TNIL || t == LUA_TTABLE, 2,
                     "nil or table expected");
+  // 元表已经存在
   if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL)
     return luaL_error(L, "cannot change a protected metatable");
   lua_settop(L, 2);
+  // 设置元表
   lua_setmetatable(L, 1);
   return 1;
 }
 
-
+// 两个对象是否相等
 static int luaB_rawequal (lua_State *L) {
+  // 第一个参数是否存在
   luaL_checkany(L, 1);
+  // 第二个参数是否存在
   luaL_checkany(L, 2);
+  // 将两个对象的比较结果压参
   lua_pushboolean(L, lua_rawequal(L, 1, 2));
   return 1;
 }
 
 
+// 得到Table和String的长度
 static int luaB_rawlen (lua_State *L) {
+  // 得到类型
   int t = lua_type(L, 1);
+  // 检查类型
   luaL_argcheck(L, t == LUA_TTABLE || t == LUA_TSTRING, 1,
                    "table or string expected");
+  // 压入Table或者字符串的长度
   lua_pushinteger(L, lua_rawlen(L, 1));
   return 1;
 }
 
-
+// 直接获得表中的键值对
 static int luaB_rawget (lua_State *L) {
+  // 第一个参数类型为table
   luaL_checktype(L, 1, LUA_TTABLE);
+  // 第二个参数位为键
   luaL_checkany(L, 2);
   lua_settop(L, 2);
+  // 得到键对应的值
   lua_rawget(L, 1);
   return 1;
 }
 
+// 直接设置表中的键值对
 static int luaB_rawset (lua_State *L) {
+  // 第一个参数类型为table
   luaL_checktype(L, 1, LUA_TTABLE);
+  // 第二个参数为键
   luaL_checkany(L, 2);
+  // 第三个参数为值
   luaL_checkany(L, 3);
   lua_settop(L, 3);
+  // 设置表中的键和值
   lua_rawset(L, 1);
   return 1;
 }
 
 
 static int luaB_collectgarbage (lua_State *L) {
+    // 选项
   static const char *const opts[] = {"stop", "restart", "collect",
     "count", "step", "setpause", "setstepmul",
     "isrunning", NULL};
+  // 选项
   static const int optsnum[] = {LUA_GCSTOP, LUA_GCRESTART, LUA_GCCOLLECT,
     LUA_GCCOUNT, LUA_GCSTEP, LUA_GCSETPAUSE, LUA_GCSETSTEPMUL,
     LUA_GCISRUNNING};
+  // 选项数字
   int o = optsnum[luaL_checkoption(L, 1, "collect", opts)];
+  // 额外的选项数字
   int ex = (int)luaL_optinteger(L, 2, 0);
+  // 调用垃圾收集函数
   int res = lua_gc(L, o, ex);
   switch (o) {
     case LUA_GCCOUNT: {
@@ -197,10 +255,12 @@ static int luaB_collectgarbage (lua_State *L) {
   }
 }
 
-
+// 得到
 static int luaB_type (lua_State *L) {
+  // 栈索引为1的值的类型
   int t = lua_type(L, 1);
   luaL_argcheck(L, t != LUA_TNONE, 1, "value expected");
+  // 得到类型对应的类型名
   lua_pushstring(L, lua_typename(L, t));
   return 1;
 }
@@ -209,6 +269,7 @@ static int luaB_type (lua_State *L) {
 static int pairsmeta (lua_State *L, const char *method, int iszero,
                       lua_CFunction iter) {
   luaL_checkany(L, 1);
+  // 没有元方法
   if (luaL_getmetafield(L, 1, method) == LUA_TNIL) {  /* no metamethod? */
     lua_pushcfunction(L, iter);  /* will return generator, */
     lua_pushvalue(L, 1);  /* state, */

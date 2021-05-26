@@ -35,11 +35,15 @@
 
 #include "llimits.h"
 
-
+// 字母
 #define ALPHABIT	0
+// 十进制数字
 #define DIGITBIT	1
+// 可打印
 #define PRINTBIT	2
+// 空白字符
 #define SPACEBIT	3
+// 十六进制数字
 #define XDIGITBIT	4
 
 
@@ -54,20 +58,28 @@
 /*
 ** 'lalpha' (Lua alphabetic) and 'lalnum' (Lua alphanumeric) both include '_'
 */
+// 检查所传的字符是否是字母
 #define lislalpha(c)	testprop(c, MASK(ALPHABIT))
+// 检查所传的字符是否是字母和数字
 #define lislalnum(c)	testprop(c, (MASK(ALPHABIT) | MASK(DIGITBIT)))
+// 用来检测一个字符是否是十进制数字
 #define lisdigit(c)	testprop(c, MASK(DIGITBIT))
+// 判断字符是否为空白字符
 #define lisspace(c)	testprop(c, MASK(SPACEBIT))
+// 检查所传的字符是否是可打印的。
 #define lisprint(c)	testprop(c, MASK(PRINTBIT))
+// 检查所传的字符是否是十六进制数字
 #define lisxdigit(c)	testprop(c, MASK(XDIGITBIT))
 
 /*
 ** this 'ltolower' only works for alphabetic characters
 */
+// 转换成小写字母
 #define ltolower(c)	((c) | ('A' ^ 'a'))
 
 
 /* two more entries for 0 and -1 (EOZ) */
+// 多加了0和-1的，所有多了2个，用来测试是数字，字母，空格，等等
 LUAI_DDEC const lu_byte luai_ctype_[UCHAR_MAX + 2];
 
 
@@ -79,12 +91,17 @@ LUAI_DDEC const lu_byte luai_ctype_[UCHAR_MAX + 2];
 
 #include <ctype.h>
 
-
+// 检查所传的字符是否是字母
 #define lislalpha(c)	(isalpha(c) || (c) == '_')
+// 检查所传的字符是否是字母和数字
 #define lislalnum(c)	(isalnum(c) || (c) == '_')
+// 用来检测一个字符是否是十进制数字
 #define lisdigit(c)	(isdigit(c))
+// 判断字符是否为空白字符
 #define lisspace(c)	(isspace(c))
+// 检查所传的字符是否是可打印的。
 #define lisprint(c)	(isprint(c))
+// 检查所传的字符是否是十六进制数字
 #define lisxdigit(c)	(isxdigit(c))
 
 #define ltolower(c)	(tolower(c))

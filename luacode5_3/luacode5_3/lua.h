@@ -309,6 +309,7 @@ LUA_API int  (lua_yieldk)     (lua_State *L, int nresults, lua_KContext ctx,
                                lua_KFunction k);
 LUA_API int  (lua_resume)     (lua_State *L, lua_State *from, int narg);
 LUA_API int  (lua_status)     (lua_State *L);
+// 是否可以让出，不在主线程中或不在一个无法让出的 C 函数中时，当前协程是可让出的
 LUA_API int (lua_isyieldable) (lua_State *L);
 
 #define lua_yield(L,n)		lua_yieldk(L, (n), 0, NULL)

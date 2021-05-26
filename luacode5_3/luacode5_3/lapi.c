@@ -623,6 +623,7 @@ LUA_API int lua_pushthread (lua_State *L) {
   setthvalue(L, L->top, L);
   api_incr_top(L);
   lua_unlock(L);
+  // 如果是主线程，就返回true
   return (G(L)->mainthread == L);
 }
 

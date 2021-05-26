@@ -15,7 +15,7 @@
 #if !LUA_USE_CTYPE	/* { */
 
 #include <limits.h>
-
+// 用于快速检验是字母，数字，可打印字符等
 LUAI_DDEF const lu_byte luai_ctype_[UCHAR_MAX + 2] = {
   0x00,  /* EOZ */
   0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,	/* 0. */
