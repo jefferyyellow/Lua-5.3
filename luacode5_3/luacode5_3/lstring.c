@@ -37,29 +37,29 @@
 /*
 ** equality for long strings
 */
-// ±È½Ï³¤×Ö·û´®ÊÇ·ñÏàµÈ
+// æ¯”è¾ƒé•¿å­—ç¬¦ä¸²æ˜¯å¦ç›¸ç­‰
 int luaS_eqlngstr (TString *a, TString *b) {
   size_t len = a->u.lnglen;
-  // Ğ£ÑéÀàĞÍ
+  // æ ¡éªŒç±»å‹
   lua_assert(a->tt == LUA_TLNGSTR && b->tt == LUA_TLNGSTR);
-  // Èç¹ûa,bÖ±½ÓÏàµÈ£¬»òÕß³¤¶ÈÏàµÈÇÒÄÚÈİÏàµÈ
+  // å¦‚æœa,bç›´æ¥ç›¸ç­‰ï¼Œæˆ–è€…é•¿åº¦ç›¸ç­‰ä¸”å†…å®¹ç›¸ç­‰
   return (a == b) ||  /* same instance or... */
     ((len == b->u.lnglen) &&  /* equal length and ... */
      (memcmp(getstr(a), getstr(b), len) == 0));  /* equal contents */
 }
 
-// ¼ÆËã×Ö·û´®µÄhashÖµ
+// è®¡ç®—å­—ç¬¦ä¸²çš„hashå€¼
 unsigned int luaS_hash (const char *str, size_t l, unsigned int seed) {
   unsigned int h = seed ^ cast(unsigned int, l);
-  // ²½³¤ = ³¤¶È/32 + 1,³¤¶ÈÔ½´ó£¬²½³¤Ô½´ó£¬³¤¶ÈÔ½Ğ¡£¬²½³¤Ô½Ğ¡
+  // æ­¥é•¿ = é•¿åº¦/32 + 1,é•¿åº¦è¶Šå¤§ï¼Œæ­¥é•¿è¶Šå¤§ï¼Œé•¿åº¦è¶Šå°ï¼Œæ­¥é•¿è¶Šå°
   size_t step = (l >> LUAI_HASHLIMIT) + 1;
-  // Í¨¹ı²½³¤¼ÆËãhashÖµ
+  // é€šè¿‡æ­¥é•¿è®¡ç®—hashå€¼
   for (; l >= step; l -= step)
     h ^= ((h<<5) + (h>>2) + cast_byte(str[l - 1]));
   return h;
 }
 
-// ¼ÆËã³¤×Ö·û´®µÄhashÖµ
+// è®¡ç®—é•¿å­—ç¬¦ä¸²çš„hashå€¼
 unsigned int luaS_hashlongstr (TString *ts) {
   lua_assert(ts->tt == LUA_TLNGSTR);
   if (ts->extra == 0) {  /* no hash? */
@@ -73,19 +73,19 @@ unsigned int luaS_hashlongstr (TString *ts) {
 /*
 ** resizes the string table
 */
-// ÖØĞÂ¶¨Òå×Ö·û´®±íµÄ´óĞ¡
+// é‡æ–°å®šä¹‰å­—ç¬¦ä¸²è¡¨çš„å¤§å°
 void luaS_resize (lua_State *L, int newsize) {
   int i;
   stringtable *tb = &G(L)->strt;
-  // Ôö´ó
+  // å¢å¤§
   if (newsize > tb->size) {  /* grow table if needed */
-	  // ÖØĞÂ·ÖÅäÄÚ´æ
+	  // é‡æ–°åˆ†é…å†…å­˜
     luaM_reallocvector(L, tb->hash, tb->size, newsize, TString *);
-	// Çë¿ÍÍ°Î»
+	// è¯·å®¢æ¡¶ä½
     for (i = tb->size; i < newsize; i++)
       tb->hash[i] = NULL;
   }
-  // ½«ÏÖÔÚµÄ×Ö·û´®È«²¿ÖØĞÂ¹Ò½Óµ½ĞÂµÄÍ°Î»ÉÏ
+  // å°†ç°åœ¨çš„å­—ç¬¦ä¸²å…¨éƒ¨é‡æ–°æŒ‚æ¥åˆ°æ–°çš„æ¡¶ä½ä¸Š
   for (i = 0; i < tb->size; i++) {  /* rehash */
     TString *p = tb->hash[i];
     tb->hash[i] = NULL;
@@ -97,7 +97,7 @@ void luaS_resize (lua_State *L, int newsize) {
       p = hnext;
     }
   }
-  // ÊÕËõ
+  // æ”¶ç¼©
   if (newsize < tb->size) {  /* shrink table if needed */
     /* vanishing slice should be empty */
     lua_assert(tb->hash[newsize] == NULL && tb->hash[tb->size - 1] == NULL);
@@ -111,7 +111,7 @@ void luaS_resize (lua_State *L, int newsize) {
 ** Clear API string cache. (Entries cannot be empty, so fill them with
 ** a non-collectable string.)
 */
-// Çå³ıAPI×Ö·û´®»º´æ(ÌõÄ¿²»ÄÜÎª¿Õ,ËùÒÔÓÃ²»ÄÜÊÕ¼¯µÄ×Ö·û´®Ìî³ä)
+// æ¸…é™¤APIå­—ç¬¦ä¸²ç¼“å­˜(æ¡ç›®ä¸èƒ½ä¸ºç©º,æ‰€ä»¥ç”¨ä¸èƒ½æ”¶é›†çš„å­—ç¬¦ä¸²å¡«å……)
 void luaS_clearcache (global_State *g) {
   int i, j;
   for (i = 0; i < STRCACHE_N; i++)
@@ -125,17 +125,17 @@ void luaS_clearcache (global_State *g) {
 /*
 ** Initialize the string table and the string cache
 */
-// ³õÊ¼»¯×Ö·ûÁĞ±íºÍ×Ö·û»º³åÇø
+// åˆå§‹åŒ–å­—ç¬¦åˆ—è¡¨å’Œå­—ç¬¦ç¼“å†²åŒº
 void luaS_init (lua_State *L) {
   global_State *g = G(L);
   int i, j;
-  // ³õÊ¼»¯×Ö·û´®±í´óĞ¡
+  // åˆå§‹åŒ–å­—ç¬¦ä¸²è¡¨å¤§å°
   luaS_resize(L, MINSTRTABSIZE);  /* initial size of string table */
   /* pre-create memory-error message */
-  // Ô¤´´½¨Ò»¸öÄÚ´æ´íÎóĞÅÏ¢
+  // é¢„åˆ›å»ºä¸€ä¸ªå†…å­˜é”™è¯¯ä¿¡æ¯
   g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
   luaC_fix(L, obj2gco(g->memerrmsg));  /* it should never be collected */
-  // ½«×Ö·û´®»º³åÇøÌî³äºÏ·¨µÄ×Ö·û´®
+  // å°†å­—ç¬¦ä¸²ç¼“å†²åŒºå¡«å……åˆæ³•çš„å­—ç¬¦ä¸²
   for (i = 0; i < STRCACHE_N; i++)  /* fill cache with valid strings */
     for (j = 0; j < STRCACHE_M; j++)
       g->strcache[i][j] = g->memerrmsg;
@@ -146,7 +146,7 @@ void luaS_init (lua_State *L) {
 /*
 ** creates a new string object
 */
-// ´´½¨Ò»¸öĞÂµÄ×Ö·û´®ÊµÀı
+// åˆ›å»ºä¸€ä¸ªæ–°çš„å­—ç¬¦ä¸²å®ä¾‹
 static TString *createstrobj (lua_State *L, size_t l, int tag, unsigned int h) {
   TString *ts;
   GCObject *o;
@@ -160,14 +160,14 @@ static TString *createstrobj (lua_State *L, size_t l, int tag, unsigned int h) {
   return ts;
 }
 
-// ´´½¨Ò»¸öÖ¸¶¨³¤¶ÈµÄ³¤×Ö·û´®
+// åˆ›å»ºä¸€ä¸ªæŒ‡å®šé•¿åº¦çš„é•¿å­—ç¬¦ä¸²
 TString *luaS_createlngstrobj (lua_State *L, size_t l) {
   TString *ts = createstrobj(L, l, LUA_TLNGSTR, G(L)->seed);
   ts->u.lnglen = l;
   return ts;
 }
 
-// ½«×Ö·û´®´Ó×Ö·û´®±íÖĞÉ¾³ı
+// å°†å­—ç¬¦ä¸²ä»å­—ç¬¦ä¸²è¡¨ä¸­åˆ é™¤
 void luaS_remove (lua_State *L, TString *ts) {
   stringtable *tb = &G(L)->strt;
   TString **p = &tb->hash[lmod(ts->hash, tb->size)];
@@ -181,32 +181,32 @@ void luaS_remove (lua_State *L, TString *ts) {
 /*
 ** checks whether short string exists and reuses it or creates a new one
 */
-// ¼ì²éÊÇ·ñÓĞÒ»¸ö¶Ì×Ö·û´®´æÔÚ²¢ÇÒÖØÓÃ£¬Èç¹û²»´æÔÚ£¬ÄÇ¾ÍÖØÓÃËü
+// æ£€æŸ¥æ˜¯å¦æœ‰ä¸€ä¸ªçŸ­å­—ç¬¦ä¸²å­˜åœ¨å¹¶ä¸”é‡ç”¨ï¼Œå¦‚æœä¸å­˜åœ¨ï¼Œé‚£å°±é‡ç”¨å®ƒ
 static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
-  // ¼ÆËã×Ö·û´®µÄhashÖµ
+  // è®¡ç®—å­—ç¬¦ä¸²çš„hashå€¼
   unsigned int h = luaS_hash(str, l, g->seed);
-  // Í¨¹ıhashÖµÕÒµ½Í°Î»
+  // é€šè¿‡hashå€¼æ‰¾åˆ°æ¡¶ä½
   TString **list = &g->strt.hash[lmod(h, g->strt.size)];
   lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
-  // ±éÀúÁĞ±í£¬ÕÒ¶ÔÓ¦µÄ×Ö·û´®
+  // éå†åˆ—è¡¨ï¼Œæ‰¾å¯¹åº”çš„å­—ç¬¦ä¸²
   for (ts = *list; ts != NULL; ts = ts->u.hnext) {
     if (l == ts->shrlen &&
         (memcmp(str, getstr(ts), l * sizeof(char)) == 0)) {
       /* found! */
-	  // ÕÒµ½ÁË
+	  // æ‰¾åˆ°äº†
       if (isdead(g, ts))  /* dead (but not collected yet)? */
         changewhite(ts);  /* resurrect it */
       return ts;
     }
   }
-  // Èç¹û×Ö·û´®µÄÊıÄ¿´óÓÚÍ°Î»µÄ´óĞ¡£¬ÖØĞÂ·Ö²¼Í°Î»ºÍ¹Ò½Ó
+  // å¦‚æœå­—ç¬¦ä¸²çš„æ•°ç›®å¤§äºæ¡¶ä½çš„å¤§å°ï¼Œé‡æ–°åˆ†å¸ƒæ¡¶ä½å’ŒæŒ‚æ¥
   if (g->strt.nuse >= g->strt.size && g->strt.size <= MAX_INT/2) {
     luaS_resize(L, g->strt.size * 2);
     list = &g->strt.hash[lmod(h, g->strt.size)];  /* recompute with new size */
   }
-  // ´´½¨Ò»¸ö¶Ì×Ö·û´®£¬·ÅÈëµ½¶Ì×Ö·û´®±íÖĞ
+  // åˆ›å»ºä¸€ä¸ªçŸ­å­—ç¬¦ä¸²ï¼Œæ”¾å…¥åˆ°çŸ­å­—ç¬¦ä¸²è¡¨ä¸­
   ts = createstrobj(L, l, LUA_TSHRSTR, h);
   memcpy(getstr(ts), str, l * sizeof(char));
   ts->shrlen = cast_byte(l);
@@ -220,18 +220,18 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
 /*
 ** new string (with explicit length)
 */
-// ´´½¨Ö¸¶¨³¤¶ÈµÄ×Ö·û´®
+// åˆ›å»ºæŒ‡å®šé•¿åº¦çš„å­—ç¬¦ä¸²
 TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
-  // ¶Ì×Ö·û´®
+  // çŸ­å­—ç¬¦ä¸²
   if (l <= LUAI_MAXSHORTLEN)  /* short string? */
     return internshrstr(L, str, l);
-  // ³¤×Ö·û´®
+  // é•¿å­—ç¬¦ä¸²
   else {
     TString *ts;
-	// ³¬¹ı×î´ó³¤¶È
+	// è¶…è¿‡æœ€å¤§é•¿åº¦
     if (l >= (MAX_SIZE - sizeof(TString))/sizeof(char))
       luaM_toobig(L);
-	// ³¤×Ö·û´®Ö±½Ó´´½¨£¬²¢½«Ô­À´µÄÊı¾İ¿½±´µ½Ä¿±êµÄ³¤×Ö·û´®
+	// é•¿å­—ç¬¦ä¸²ç›´æ¥åˆ›å»ºï¼Œå¹¶å°†åŸæ¥çš„æ•°æ®æ‹·è´åˆ°ç›®æ ‡çš„é•¿å­—ç¬¦ä¸²
     ts = luaS_createlngstrobj(L, l);
     memcpy(getstr(ts), str, l * sizeof(char));
     return ts;
@@ -245,28 +245,28 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
 ** only zero-terminated strings, so it is safe to use 'strcmp' to
 ** check hits.
 */
-// ´´½¨»òÖØ¸´Ê¹ÓÃÒÔÁã½áÎ²µÄ×Ö·û´®£¬Ê×ÏÈ¼ì²é»º´æ(Ê¹ÓÃ×Ö·û´®µØÖ·×÷Îª¼ü)£¬
-// »º´æÖ»°üº¬0½áÎ²µÄ×Ö·û´®£¬ËùÒÔËü¿ÉÒÔ°²È«Ê¹ÓÃstrcmp¼ì²éÊÇ·ñÃüÖĞ
+// åˆ›å»ºæˆ–é‡å¤ä½¿ç”¨ä»¥é›¶ç»“å°¾çš„å­—ç¬¦ä¸²ï¼Œé¦–å…ˆæ£€æŸ¥ç¼“å­˜(ä½¿ç”¨å­—ç¬¦ä¸²åœ°å€ä½œä¸ºé”®)ï¼Œ
+// ç¼“å­˜åªåŒ…å«0ç»“å°¾çš„å­—ç¬¦ä¸²ï¼Œæ‰€ä»¥å®ƒå¯ä»¥å®‰å…¨ä½¿ç”¨strcmpæ£€æŸ¥æ˜¯å¦å‘½ä¸­
 TString *luaS_new (lua_State *L, const char *str) {
   unsigned int i = point2uint(str) % STRCACHE_N;  /* hash */
   int j;
   TString **p = G(L)->strcache[i];
   for (j = 0; j < STRCACHE_M; j++) {
-	 // ÃüÖĞÁË
+	 // å‘½ä¸­äº†
     if (strcmp(str, getstr(p[j])) == 0)  /* hit? */
       return p[j];  /* that is it */
   }
   /* normal route */
-  // ½«×îºóµÄÄÇÒ»¸öÒÆ³ı
+  // å°†æœ€åçš„é‚£ä¸€ä¸ªç§»é™¤
   for (j = STRCACHE_M - 1; j > 0; j--)
     p[j] = p[j - 1];  /* move out last element */
   /* new element is first in the list */
-  // ĞÂµÄÔªËØ·ÅÔÚÁĞ±íµÄµÚÒ»¸ö
+  // æ–°çš„å…ƒç´ æ”¾åœ¨åˆ—è¡¨çš„ç¬¬ä¸€ä¸ª
   p[0] = luaS_newlstr(L, str, strlen(str));
   return p[0];
 }
 
-// ´´½¨userdata,Ö¸¶¨´óĞ¡Îªs
+// åˆ›å»ºuserdata,æŒ‡å®šå¤§å°ä¸ºs
 Udata *luaS_newudata (lua_State *L, size_t s) {
   Udata *u;
   GCObject *o;

@@ -1,4 +1,4 @@
-﻿/*
+/*
 ** $Id: ltable.c,v 2.118.1.4 2018/06/08 16:22:51 roberto Exp $
 ** Lua tables (hash)
 ** See Copyright Notice in lua.h
@@ -54,7 +54,7 @@
 */
 #define MAXHBITS	(MAXABITS - 1)
 
-
+// 得到t->node[n%node的桶位长度]
 #define hashpow2(t,n)		(gnode(t, lmod((n), sizenode(t))))
 
 #define hashstr(t,str)		hashpow2(t, (str)->hash)
@@ -528,9 +528,10 @@ TValue *luaH_newkey (lua_State *L, Table *t, const TValue *key) {
   }
   // 主位置
   mp = mainposition(t, key);
+  // 主位置已经备用了
   if (!ttisnil(gval(mp)) || isdummy(t)) {  /* main position is taken? */
     Node *othern;
-	// 得到第一个空的位置
+	// 得到最后一个空的位置
     Node *f = getfreepos(t);  /* get a free place */
 	// 没有空的位置了
     if (f == NULL) {  /* cannot find a free place? */
@@ -544,12 +545,14 @@ TValue *luaH_newkey (lua_State *L, Table *t, const TValue *key) {
     othern = mainposition(t, gkey(mp));
     if (othern != mp) {  /* is colliding node out of its main position? */
       /* yes; move colliding node into free position */
-		// 将碰撞的节点移动到空的位置
+		// 如果现在这个位置，本身是因为碰撞以后找的空位置（getfreepos），就把找到的空位置，给这个用，
+        // 把主位置空出来,给新的用
       while (othern + gnext(othern) != mp)  /* find previous */
         othern += gnext(othern);
 	  // 重新连接
       gnext(othern) = cast_int(f - othern);  /* rechain to point to 'f' */
       *f = *mp;  /* copy colliding node into free pos. (mp->next also goes) */
+      // 因为原来的有下一个，就矫正f的下一个，并且mp的下一个置为空
       if (gnext(mp) != 0) {
         gnext(f) += cast_int(mp - f);  /* correct 'next' */
         gnext(mp) = 0;  /* now 'mp' is free */
@@ -559,9 +562,11 @@ TValue *luaH_newkey (lua_State *L, Table *t, const TValue *key) {
 	// 碰撞节点已经在自己的主位置了，新节点只能找其他的空位置
     else {  /* colliding node is in its own main position */
       /* new node will go into free position */
+        // 将mp的下一个节点挂在f后面
       if (gnext(mp) != 0)
         gnext(f) = cast_int((mp + gnext(mp)) - f);  /* chain new position */
       else lua_assert(gnext(f) == 0);
+      // 将f挂在mp后面
       gnext(mp) = cast_int(f - mp);
       mp = f;
     }

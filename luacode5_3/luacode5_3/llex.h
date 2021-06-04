@@ -23,6 +23,7 @@
 * WARNING: if you change the order of this enumeration,
 * grep "ORDER RESERVED"
 */
+// 保留字标志的终结符，注意和"ORDER RESERVED"中的保留字字符串顺序保持一致
 enum RESERVED {
   /* terminal symbols denoted by reserved words */
   TK_AND = FIRST_RESERVED, TK_BREAK,
@@ -37,6 +38,7 @@ enum RESERVED {
 };
 
 /* number of reserved words */
+// 保留字的数目
 #define NUM_RESERVED	(cast(int, TK_WHILE-FIRST_RESERVED+1))
 
 

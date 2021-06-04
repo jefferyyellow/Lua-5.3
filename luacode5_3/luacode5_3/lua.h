@@ -60,19 +60,23 @@ typedef struct lua_State lua_State;
 /*
 ** basic types
 */
-#define LUA_TNONE		(-1)
+// 基本类型
+// 其中LUA TLIGHTUSERDATA 和LUA TUSERDATA－样，对应的都是void ＊指针，区别在于前者的分
+// 配释放由Lua 外部的使用者来完成，而后者则是通过Lua 内部来完成的。换言之，前者不需要Lua
+// 去关心它的生存期，由使用者自己去关注，后者则反之。
+#define LUA_TNONE		    (-1)            // 无类型      对应数据结构：无
 
-#define LUA_TNIL		0
-#define LUA_TBOOLEAN		1
-#define LUA_TLIGHTUSERDATA	2
-#define LUA_TNUMBER		3
-#define LUA_TSTRING		4
-#define LUA_TTABLE		5
-#define LUA_TFUNCTION		6
-#define LUA_TUSERDATA		7
-#define LUA_TTHREAD		8
+#define LUA_TNIL		    0               // 空类型      对应数据结构：无
+#define LUA_TBOOLEAN		1               // 布尔类型    对应数据结构：无
+#define LUA_TLIGHTUSERDATA	2               // 指针        对应数据结构：void*
+#define LUA_TNUMBER		    3               // 数据        对应数据结构：lua_Number
+#define LUA_TSTRING		    4               // 字符串      对应数据结构：TString
+#define LUA_TTABLE		    5               // 表          对应数据结构：Table
+#define LUA_TFUNCTION		6               // 函数        对应数据结构：CClosure,LClosure
+#define LUA_TUSERDATA		7               // 指针        对应数据结构：void*
+#define LUA_TTHREAD		    8               // Lua虚拟机、协程 对应数据结构：lua_State
 
-#define LUA_NUMTAGS		9
+#define LUA_NUMTAGS		    9
 
 
 

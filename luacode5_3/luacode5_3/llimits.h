@@ -61,6 +61,7 @@ typedef unsigned char lu_byte;
 
 
 /* type to ensure maximum alignment */
+// 确保按照最大的类型对齐
 #if defined(LUAI_USER_ALIGNMENT_T)
 typedef LUAI_USER_ALIGNMENT_T L_Umaxalign;
 #else
@@ -174,7 +175,7 @@ typedef unsigned long Instruction;
 ** #("function") = 8, #("__newindex") = 10.)
 */
 #if !defined(LUAI_MAXSHORTLEN)
-// ���Ķ��ַ���
+// 最大的短字符串
 #define LUAI_MAXSHORTLEN	40
 #endif
 

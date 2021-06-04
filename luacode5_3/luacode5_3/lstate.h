@@ -72,10 +72,12 @@ struct lua_longjmp;  /* defined in ldo.c */
 #define KGC_NORMAL	0
 #define KGC_EMERGENCY	1	/* gc was forced by an allocation failure */
 
-
+// 全局的字符串表
 typedef struct stringtable {
   TString **hash;
+  // 元素的数目
   int nuse;  /* number of elements */
+  // 散列桶数目
   int size;
 } stringtable;
 
@@ -129,6 +131,7 @@ typedef struct CallInfo {
 #define CIST_YPCALL	(1<<4)	/* call is a yieldable protected call */
 // 调用是否是尾调用
 #define CIST_TAIL	(1<<5)	/* call was tail called */
+// 最后一个钩子叫yielded
 #define CIST_HOOKYIELD	(1<<6)	/* last hook called yielded */
 #define CIST_LEQ	(1<<7)  /* using __lt for __le */
 // 调用一个终结器
@@ -153,6 +156,7 @@ typedef struct global_State {
   l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
   lu_mem GCmemtrav;  /* memory traversed by the GC */
   lu_mem GCestimate;  /* an estimate of the non-garbage memory in use */
+  // 字符串的hash表
   stringtable strt;  /* hash table for strings */
   TValue l_registry;
   unsigned int seed;  /* randomized seed for hashes */
@@ -213,7 +217,9 @@ struct lua_State {
   volatile lua_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
   int stacksize;
+  // 基本的钩子计数，可能会重置到这个计数
   int basehookcount;
+  // 实时的钩子计数
   int hookcount;
   unsigned short nny;  /* number of non-yieldable calls in stack */
   unsigned short nCcalls;  /* number of nested C calls */

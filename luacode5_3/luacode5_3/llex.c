@@ -37,6 +37,7 @@
 
 
 /* ORDER RESERVED */
+// 保留字
 static const char *const luaX_tokens [] = {
     "and", "break", "do", "else", "elseif",
     "end", "false", "for", "function", "goto", "if",
@@ -69,11 +70,17 @@ static void save (LexState *ls, int c) {
 
 void luaX_init (lua_State *L) {
   int i;
+  // 创建环境变量的名字
   TString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
+  // 绝不收集该名字
   luaC_fix(L, obj2gco(e));  /* never collect this name */
+  // 变量保留字
   for (i=0; i<NUM_RESERVED; i++) {
+    // 创建保留字字符串
     TString *ts = luaS_new(L, luaX_tokens[i]);
+    // 保留字绝不收集
     luaC_fix(L, obj2gco(ts));  /* reserved words are never collected */
+    // 设置字符串的额外信息
     ts->extra = cast_byte(i+1);  /* reserved word */
   }
 }

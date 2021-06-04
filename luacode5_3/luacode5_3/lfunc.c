@@ -29,7 +29,7 @@ CClosure *luaF_newCclosure (lua_State *L, int n) {
   return c;
 }
 
-// ����һ���µ�lua�հ�
+// 创建一个新的lua闭包
 LClosure *luaF_newLclosure (lua_State *L, int n) {
   GCObject *o = luaC_newobj(L, LUA_TLCL, sizeLclosure(n));
   LClosure *c = gco2lcl(o);
@@ -53,7 +53,7 @@ void luaF_initupvals (lua_State *L, LClosure *cl) {
   }
 }
 
-// ����upvalues�����û�ж�Ӧ��upvalues�ͻᴴ��һ���µ�
+// 查找upvalues，如果没有对应的upvalues就会创建一个新的
 UpVal *luaF_findupval (lua_State *L, StkId level) {
   UpVal **pp = &L->openupval;
   UpVal *p;
@@ -137,12 +137,14 @@ void luaF_freeproto (lua_State *L, Proto *f) {
 ** Look for n-th local variable at line 'line' in function 'func'.
 ** Returns NULL if not found.
 */
+// 在函数 'func' 的第 'line' 行查找第 n 个局部变量。如果未找到，则返回 NULL。
 const char *luaF_getlocalname (const Proto *f, int local_number, int pc) {
   int i;
   for (i = 0; i<f->sizelocvars && f->locvars[i].startpc <= pc; i++) {
     if (pc < f->locvars[i].endpc) {  /* is variable active? */
       local_number--;
       if (local_number == 0)
+        // 返回变量名
         return getstr(f->locvars[i].varname);
     }
   }
