@@ -42,6 +42,7 @@ LClosure *luaF_newLclosure (lua_State *L, int n) {
 /*
 ** fill a closure with new closed upvalues
 */
+// 使用新的upvalues来填充closure
 void luaF_initupvals (lua_State *L, LClosure *cl) {
   int i;
   for (i = 0; i < cl->nupvalues; i++) {
@@ -79,13 +80,16 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   return uv;
 }
 
-
+// 处理函数中的upvalue，如果引用计数为0，释放，或者放入slot
 void luaF_close (lua_State *L, StkId level) {
   UpVal *uv;
   while (L->openupval != NULL && (uv = L->openupval)->v >= level) {
     lua_assert(upisopen(uv));
+    // 从链表中移除
     L->openupval = uv->u.open.next;  /* remove from 'open' list */
+    // 引用计数为0
     if (uv->refcount == 0)  /* no references? */
+      // 释放
       luaM_free(L, uv);  /* free upvalue */
     else {
       setobj(L, &uv->u.value, uv->v);  /* move value to upvalue slot */

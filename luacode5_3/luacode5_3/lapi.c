@@ -1021,8 +1021,11 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   lua_lock(L);
   api_check(L, k == NULL || !isLua(L->ci),
     "cannot use continuations inside hooks");
+  // 确保堆栈里面有nargs+1个元素
   api_checknelems(L, nargs+1);
+  // 检查线程状态是否正常
   api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");
+  // 检查堆栈是否可以放心返回值
   checkresults(L, nargs, nresults);
   // 计算错误调用函数的diff
   if (errfunc == 0)
@@ -1033,9 +1036,12 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
     func = savestack(L, o);
   }
   // 得到函数在参数之前
+  // 这说明先压参的是函数指针，然后再压参函数参数
   c.func = L->top - (nargs+1);  /* function to be called */
+  // 没有后续或者没有yield
   if (k == NULL || L->nny > 0) {  /* no continuation or no yieldable? */
     c.nresults = nresults;  /* do a 'conventional' protected call */
+    // 最终调用f_call
     status = luaD_pcall(L, f_call, &c, savestack(L, c.func), func);
   }
   else {  /* prepare continuation (call is already protected by 'resume') */
@@ -1072,7 +1078,9 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
   // 分析器分析
   status = luaD_protectedparser(L, &z, chunkname, mode);
   if (status == LUA_OK) {  /* no errors? */
+    // 得到栈顶的函数
     LClosure *f = clLvalue(L->top - 1);  /* get newly created function */
+    // 如果有upvalue
     if (f->nupvalues >= 1) {  /* does it have an upvalue? */
       /* get global table from registry */
       Table *reg = hvalue(&G(L)->l_registry);

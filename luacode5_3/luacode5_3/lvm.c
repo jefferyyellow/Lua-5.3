@@ -829,6 +829,8 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* fetch an instruction and prepare its execution */
+// 获取指令并准备执行
+// 从保存的pc中取得下一条指令
 #define vmfetch()	{ \
   i = *(ci->u.l.savedpc++); \
   if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) \
@@ -865,16 +867,23 @@ void luaV_execute (lua_State *L) {
   TValue *k;
   StkId base;
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
+  // 帧改变时的重入点（调用/返回）
  newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
+  // 函数闭包的局部引用
   cl = clLvalue(ci->func);  /* local reference to function's closure */
+  // 对函数常量表的局部引用
   k = cl->p->k;  /* local reference to function's constant table */
+  // 函数base的本地副本
   base = ci->u.l.base;  /* local copy of function's base */
   /* main loop of interpreter */
+  // 解释器的主循环
   for (;;) {
     Instruction i;
     StkId ra;
+    // 取指令
     vmfetch();
+    // 根据不同的指令集，不同的处理
     vmdispatch (GET_OPCODE(i)) {
       vmcase(OP_MOVE) {
         setobjs2s(L, ra, RB(i));

@@ -34,6 +34,7 @@
 
 
 /* type of protected functions, to be ran by 'runprotected' */
+// 保护函数的类型，通过runprotected来运行
 typedef void (*Pfunc) (lua_State *L, void *ud);
 
 LUAI_FUNC int luaD_protectedparser (lua_State *L, ZIO *z, const char *name,

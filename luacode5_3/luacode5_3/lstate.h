@@ -99,9 +99,9 @@ typedef struct CallInfo {
   struct CallInfo *previous, *next;  /* dynamic call link */
   union {
     struct {  /* only for Lua functions */
-		// 栈底，整个堆栈的传人参数部分开始
+		// 栈底，就是固定参数开始的地方
       StkId base;  /* base for this function */
-	  // 当前执行的指令地址
+	  // 调用函数开始点
       const Instruction *savedpc;
     } l;
     struct {  /* only for C functions */
@@ -126,6 +126,7 @@ typedef struct CallInfo {
 #define CIST_LUA	(1<<1)	/* call is running a Lua function */
 // 调用调试钩子
 #define CIST_HOOKED	(1<<2)	/* call is running a debug hook */
+// 调用正在luaV_execute的新调用上运行
 #define CIST_FRESH	(1<<3)	/* call is running on a fresh invocation
                                    of luaV_execute */
 #define CIST_YPCALL	(1<<4)	/* call is a yieldable protected call */
@@ -199,6 +200,7 @@ struct lua_State {
   unsigned short nci;  /* number of items in 'ci' list */
   // 状态：运行，挂起
   lu_byte status;
+  // 栈顶
   StkId top;  /* first free slot in the stack */
   global_State *l_G;
   // 当前函数的调用信息
@@ -221,7 +223,9 @@ struct lua_State {
   int basehookcount;
   // 实时的钩子计数
   int hookcount;
+  // 在堆栈中不能yield的计数
   unsigned short nny;  /* number of non-yieldable calls in stack */
+  // 嵌套 C 调用的数量
   unsigned short nCcalls;  /* number of nested C calls */
   l_signalT hookmask;
   lu_byte allowhook;

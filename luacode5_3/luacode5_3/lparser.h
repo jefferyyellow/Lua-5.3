@@ -108,6 +108,7 @@ struct BlockCnt;  /* defined in lparser.c */
 
 
 /* state needed to generate code for a given function */
+// 为给定函数生成代码所需的状态
 typedef struct FuncState {
   Proto *f;  /* current function header */
   struct FuncState *prev;  /* enclosing function */
@@ -120,8 +121,11 @@ typedef struct FuncState {
   int np;  /* number of elements in 'p' */
   int firstlocal;  /* index of first local var (in Dyndata array) */
   short nlocvars;  /* number of elements in 'f->locvars' */
+  // 激活的局部变量的数目
   lu_byte nactvar;  /* number of active local variables */
+  // upvalues的数目
   lu_byte nups;  /* number of upvalues */
+  // 第一个空闲的寄存器
   lu_byte freereg;  /* first free register */
 } FuncState;
 

@@ -131,6 +131,9 @@ LUALIB_API void (luaL_requiref) (lua_State *L, const char *modname,
 
 #define luaL_typename(L,i)	lua_typename(L, lua_type(L,(i)))
 
+// 执行文件：就是先将其加载出来，然后执行
+// luaL_loadfile函数用于进行词法和语法分析，
+// lua_pcall用于将第一步中分析的结果（也就是字节码）放到虚拟机中执行
 #define luaL_dofile(L, fn) \
 	(luaL_loadfile(L, fn) || lua_pcall(L, 0, LUA_MULTRET, 0))
 

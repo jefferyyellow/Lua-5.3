@@ -471,7 +471,9 @@ typedef struct Proto {
   CommonHeader;
   // 固定参数的数量
   lu_byte numparams;  /* number of fixed parameters */
+  // 可变参数的函数
   lu_byte is_vararg;
+  // 此函数所需的寄存器数量
   lu_byte maxstacksize;  /* number of registers needed by this function */
   // upvalues的数量
   int sizeupvalues;  /* size of 'upvalues' */

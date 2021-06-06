@@ -764,8 +764,10 @@ static void parlist (LexState *ls) {
           nparams++;
           break;
         }
+        // 参数中有 ...表示可变参数
         case TK_DOTS: {  /* param -> '...' */
           luaX_next(ls);
+          // 设置为可变参数
           f->is_vararg = 1;  /* declared vararg */
           break;
         }
@@ -1613,6 +1615,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
+  // 主函数总是被定义位可变参数的函数
   fs->f->is_vararg = 1;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
@@ -1628,6 +1631,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   LexState lexstate;
   FuncState funcstate;
   LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
+  // 将cl设置在栈顶
   setclLvalue(L, L->top, cl);  /* anchor it (to avoid being collected) */
   luaD_inctop(L);
   lexstate.h = luaH_new(L);  /* create table for scanner */

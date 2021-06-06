@@ -134,14 +134,20 @@ l_noret luaD_throw (lua_State *L, int errcode) {
 
 
 int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud) {
+    // 记录嵌套 C 调用的数量
   unsigned short oldnCcalls = L->nCcalls;
+
+  // 准备异常处理
   struct lua_longjmp lj;
   lj.status = LUA_OK;
+  // 链接新的错误分发
   lj.previous = L->errorJmp;  /* chain new error handler */
   L->errorJmp = &lj;
+  // 异常处理中执行
   LUAI_TRY(L, &lj,
     (*f)(L, ud);
   );
+  // 回复错误处理和C调用嵌套的数量
   L->errorJmp = lj.previous;  /* restore old error handler */
   L->nCcalls = oldnCcalls;
   return lj.status;
@@ -302,6 +308,7 @@ static void callhook (lua_State *L, CallInfo *ci) {
 
 
 // 调整参数，nfixargs需求的，actual实际上的
+// 为啥要移动一次呢？
 static StkId adjust_varargs (lua_State *L, Proto *p, int actual) {
   int i;
   int nfixargs = p->numparams;
@@ -415,6 +422,7 @@ int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
   // 回退到调用者
   L->ci = ci->previous;  /* back to caller */
   /* move results to proper place */
+  // 将结果移动到合适的位置
   return moveresults(L, firstResult, res, nres, wanted);
 }
 
@@ -439,14 +447,18 @@ int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
 ** the execution ('luaV_execute') to the caller, to allow stackless
 ** calls.) Returns true iff function has been executed (C function).
 */
+// 准备一个函数调用
 int luaD_precall (lua_State *L, StkId func, int nresults) {
   lua_CFunction f;
   CallInfo *ci;
   // 根据函数的类型调用：C闭包，轻量级C函数，Lua函数
   switch (ttype(func)) {
+      // C闭包和轻量C函数执行取值的方式不一样
+      // C闭包
     case LUA_TCCL:  /* C closure */
       f = clCvalue(func)->f;
       goto Cfunc;
+    // 轻量C函数，
     case LUA_TLCF:  /* light C function */
       f = fvalue(func);
      Cfunc: {
@@ -455,9 +467,11 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       checkstackp(L, LUA_MINSTACK, func);  /* ensure minimum stack size */
 
 	  // 进入新的函数（调用信息callInfo)
+      // 重用或者创建新的CallInfo
       ci = next_ci(L);  /* now 'enter' new function */
       ci->nresults = nresults;
       ci->func = func;
+      // 直接增加LUA_MINSTACK堆栈
       ci->top = L->top + LUA_MINSTACK;
       lua_assert(ci->top <= L->stack_last);
       ci->callstatus = 0;
@@ -476,19 +490,26 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       StkId base;
       Proto *p = clLvalue(func)->p;
 	  // 计算出参数的数目
+      // func后面就是参数
       int n = cast_int(L->top - func) - 1;  /* number of real arguments */
+      // 此函数所需的寄存器数量为最大的堆栈尺寸
       int fsize = p->maxstacksize;  /* frame size */
       checkstackp(L, fsize, func);
+      // base总是指向第一个固定参数处
+      // 可变参数：func + 空洞（）+ 可变参数+固定参数，这里的空洞是移走的固定参数
       if (p->is_vararg)
         base = adjust_varargs(L, p, n);
+      // 固定参数：func + 固定参数
       else {  /* non vararg function */
 		  // 将不够的参数补齐，都是nil
         for (; n < p->numparams; n++)
           setnilvalue(L->top++);  /* complete missing arguments */
+        // 函数地址后面就是新的CallInfo
         base = func + 1;
       }
 
 	  // 进入新的函数（调用信息callInfo)
+      // 重用或者创建新的CallInfo
       ci = next_ci(L);  /* now 'enter' new function */
       ci->nresults = nresults;
       ci->func = func;
@@ -537,6 +558,7 @@ void luaD_call (lua_State *L, StkId func, int nResults) {
 	// 调用不能大于最大调用层数
   if (++L->nCcalls >= LUAI_MAXCCALLS)
     stackerror(L);
+  // 只有lua函数才需要调用luaV_execute
   if (!luaD_precall(L, func, nResults))  /* is a Lua function? */
     luaV_execute(L);  /* call it */
   L->nCcalls--;
@@ -763,16 +785,24 @@ LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
 int luaD_pcall (lua_State *L, Pfunc func, void *u,
                 ptrdiff_t old_top, ptrdiff_t ef) {
   int status;
+  // 保存原来的调用信息
   CallInfo *old_ci = L->ci;
+  // 原来允许的钩子
   lu_byte old_allowhooks = L->allowhook;
+  // 原来的yield的计数
   unsigned short old_nny = L->nny;
+  // 原来的错误处理函数
   ptrdiff_t old_errfunc = L->errfunc;
   L->errfunc = ef;
   status = luaD_rawrunprotected(L, func, u);
+  // 错误发生
   if (status != LUA_OK) {  /* an error occurred? */
+    // 恢复原来的堆栈
     StkId oldtop = restorestack(L, old_top);
     luaF_close(L, oldtop);  /* close possible pending closures */
+    // 设置错误obj
     seterrorobj(L, status, oldtop);
+    // 回复原来的信息
     L->ci = old_ci;
     L->allowhook = old_allowhooks;
     L->nny = old_nny;
@@ -805,6 +835,7 @@ static void checkmode (lua_State *L, const char *mode, const char *x) {
 }
 
 // 分析源码
+// 完成语法分析之后，产生的字节码相关数据都在LClosure类型的结构体中，然后保存下来，留给后面来执行
 static void f_parser (lua_State *L, void *ud) {
   LClosure *cl;
   struct SParser *p = cast(struct SParser *, ud);
@@ -829,12 +860,15 @@ int luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
                                         const char *mode) {
   struct SParser p;
   int status;
+  // 在分析期间不能yield
   L->nny++;  /* cannot yield during parsing */
+
   p.z = z; p.name = name; p.mode = mode;
   p.dyd.actvar.arr = NULL; p.dyd.actvar.size = 0;
   p.dyd.gt.arr = NULL; p.dyd.gt.size = 0;
   p.dyd.label.arr = NULL; p.dyd.label.size = 0;
   luaZ_initbuffer(L, &p.buff);
+  // 调用f_parser来分析
   status = luaD_pcall(L, f_parser, &p, savestack(L, L->top), L->errfunc);
   luaZ_freebuffer(L, &p.buff);
   luaM_freearray(L, p.dyd.actvar.arr, p.dyd.actvar.size);
