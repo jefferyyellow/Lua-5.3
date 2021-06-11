@@ -69,15 +69,15 @@
 ** Try to convert a value to a float. The float case is already handled
 ** by the macro 'tonumber'.
 */
-// ³¢ÊÔ½«Ò»¸öÖµ×ª»»³É¸¡µãÊı¡£¾ÍÊÇtonumberµÄµ÷ÓÃ
+// å°è¯•å°†ä¸€ä¸ªå€¼è½¬æ¢æˆæµ®ç‚¹æ•°ã€‚å°±æ˜¯tonumberçš„è°ƒç”¨
 int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
   TValue v;
-  // Èç¹ûÊÇÕûÊı£¬Ö±½Ó×ª»»¾ÍĞĞ
+  // å¦‚æœæ˜¯æ•´æ•°ï¼Œç›´æ¥è½¬æ¢å°±è¡Œ
   if (ttisinteger(obj)) {
     *n = cast_num(ivalue(obj));
     return 1;
   }
-  // Èç¹ûÊÇ×Ö·û´®£¬×ª»»³ÉÊı×Ö
+  // å¦‚æœæ˜¯å­—ç¬¦ä¸²ï¼Œè½¬æ¢æˆæ•°å­—
   else if (cvt2num(obj) &&  /* string convertible to number? */
             luaO_str2num(svalue(obj), &v) == vslen(obj) + 1) {
     *n = nvalue(&v);  /* convert result of 'luaO_str2num' to a float */
@@ -94,14 +94,14 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
 ** mode == 1: takes the floor of the number
 ** mode == 2: takes the ceil of the number
 */
-// ÊÔ×Å½«Ò»¸öÖµ×ª»»³ÉÕûÊı£¬
+// è¯•ç€å°†ä¸€ä¸ªå€¼è½¬æ¢æˆæ•´æ•°ï¼Œ
 int luaV_tointeger (const TValue *obj, lua_Integer *p, int mode) {
   TValue v;
 again:
-  // objÊÇ¸¡µãÊı£¬¸ù¾İÄ£Ê½µÃµ½£¬Èç¹û
-  // modeÎª0£¬Ö»½ÓÊÜÕûÊı£¬
-  // modeÎª1£¬µÃµ½floor(n)
-  // modeÎª2£¬±íÊ¾ceil(n)
+  // objæ˜¯æµ®ç‚¹æ•°ï¼Œæ ¹æ®æ¨¡å¼å¾—åˆ°ï¼Œå¦‚æœ
+  // modeä¸º0ï¼Œåªæ¥å—æ•´æ•°ï¼Œ
+  // modeä¸º1ï¼Œå¾—åˆ°floor(n)
+  // modeä¸º2ï¼Œè¡¨ç¤ºceil(n)
   if (ttisfloat(obj)) {
     lua_Number n = fltvalue(obj);
     lua_Number f = l_floor(n);
@@ -112,16 +112,16 @@ again:
     }
     return lua_numbertointeger(f, p);
   }
-  // objÊÇÕûÊıÀàĞÍ£¬Ö±½Ó¼òµ¥È¡Öµ¾ÍĞĞ
+  // objæ˜¯æ•´æ•°ç±»å‹ï¼Œç›´æ¥ç®€å•å–å€¼å°±è¡Œ
   else if (ttisinteger(obj)) {
     *p = ivalue(obj);
     return 1;
   }
-  // objÊÇ×Ö·û´®ÀàĞÍ£¬
+  // objæ˜¯å­—ç¬¦ä¸²ç±»å‹ï¼Œ
   else if (cvt2num(obj) &&
             luaO_str2num(svalue(obj), &v) == vslen(obj) + 1) {
     obj = &v;
-	// ´Ó×Ö·û´®Àï×ª»»³ÉintºÍfloat£¬»Øµ½º¯Êı¿ªÊ¼´¦£¬ÖØĞÂÀ´¹ı
+	// ä»å­—ç¬¦ä¸²é‡Œè½¬æ¢æˆintå’Œfloatï¼Œå›åˆ°å‡½æ•°å¼€å§‹å¤„ï¼Œé‡æ–°æ¥è¿‡
     goto again;  /* convert result from 'luaO_str2num' to an integer */
   }
   return 0;  /* conversion failed */
@@ -168,27 +168,27 @@ static int forlimit (const TValue *obj, lua_Integer *p, lua_Integer step,
 ** if 'slot' is NULL, 't' is not a table; otherwise, 'slot' points to
 ** t[k] entry (which must be nil).
 */
-// Íê³É±íµÄ·ÃÎÊ'val = t[key]'
-// Èç¹û'slot'ÊÇNULL,ÄÇÃ´t¾Í²»ÊÇtable,»òÕßslot¾ÍÖ¸Ïòt[k]£¨t[k]±ØĞëÊÇnil)
+// å®Œæˆè¡¨çš„è®¿é—®'val = t[key]'
+// å¦‚æœ'slot'æ˜¯NULL,é‚£ä¹ˆtå°±ä¸æ˜¯table,æˆ–è€…slotå°±æŒ‡å‘t[k]ï¼ˆt[k]å¿…é¡»æ˜¯nil)
 void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
                       const TValue *slot) {
   int loop;  /* counter to avoid infinite loops */
   const TValue *tm;  /* metamethod */
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
-	// Èç¹ût²»ÊÇtable
+	// å¦‚æœtä¸æ˜¯table
     if (slot == NULL) {  /* 't' is not a table? */
       lua_assert(!ttistable(t));
-	  // È¡µÃtµÄÔª·½·¨
+	  // å–å¾—tçš„å…ƒæ–¹æ³•
       tm = luaT_gettmbyobj(L, t, TM_INDEX);
-	  // Ã»ÓĞÔª·½·¨¾ÍÖ±½Ó±¨´í
+	  // æ²¡æœ‰å…ƒæ–¹æ³•å°±ç›´æ¥æŠ¥é”™
       if (ttisnil(tm))
         luaG_typeerror(L, t, "index");  /* no metamethod */
       /* else will try the metamethod */
     }
     else {  /* 't' is a table */
-	  // tÊÇ¸ö±í
+	  // tæ˜¯ä¸ªè¡¨
       lua_assert(ttisnil(slot));
-	  // ´Ó±íÀïÃæÈ¡µÃÔª·½·¨,Èç¹ûÃ»ÓĞ¾Í·µ»Ønil,½á¹û¾ÍÊÇÈ¡t[k]µÃµ½nil
+	  // ä»è¡¨é‡Œé¢å–å¾—å…ƒæ–¹æ³•,å¦‚æœæ²¡æœ‰å°±è¿”å›nil,ç»“æœå°±æ˜¯å–t[k]å¾—åˆ°nil
       tm = fasttm(L, hvalue(t)->metatable, TM_INDEX);  /* table's metamethod */
       if (tm == NULL) {  /* no metamethod? */
         setnilvalue(val);  /* result is nil */
@@ -196,12 +196,12 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
       }
       /* else will try the metamethod */
     }
-	// Èç¹ûÊÇÒ»¸öº¯Êı£¬¾Íµ÷ÓÃ
+	// å¦‚æœæ˜¯ä¸€ä¸ªå‡½æ•°ï¼Œå°±è°ƒç”¨
     if (ttisfunction(tm)) {  /* is metamethod a function? */
       luaT_callTM(L, tm, t, key, val, 1);  /* call it */
       return;
     }
-	// Ôª·½·¨»¹ÓĞÔª·½·¨£¬¿ÉÒÔÇ¶Ì×ºÜ¶à²ã£¬ËùÒÔÕâÊÇ¸öÑ­»·È¥£¬×î¶àMAXTAGLOOP
+	// å…ƒæ–¹æ³•è¿˜æœ‰å…ƒæ–¹æ³•ï¼Œå¯ä»¥åµŒå¥—å¾ˆå¤šå±‚ï¼Œæ‰€ä»¥è¿™æ˜¯ä¸ªå¾ªç¯å»ï¼Œæœ€å¤šMAXTAGLOOP
     t = tm;  /* else try to access 'tm[key]' */
     if (luaV_fastget(L,t,key,slot,luaH_get)) {  /* fast track? */
       setobj2s(L, val, slot);  /* done */
@@ -220,9 +220,9 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
 ** entry.  (The value at 'slot' must be nil, otherwise 'luaV_fastset'
 ** would have done the job.)
 */
-// Íê³É±íµÄ¸³Öµ't[key] = val'
-// Èç¹ûslotÊÇNULL£¬t¾Í²»ÊÇÒ»¸ötable£¬·ñÔò£¬slotÖ¸ÏòÒ»¸öÌõÄ¿t[key]£¬Èç¹ûÃ»ÓĞ¸ÃÌõÄ¿¾ÍÊÇluaO_nilobject
-// ÆäÊµt[key]¿Ï¶¨ÊÇnil£¬·ñÔòµÄ»°luaV_fastset¾ÍÄÜ°ÑÍê³É¸³ÖµÁË
+// å®Œæˆè¡¨çš„èµ‹å€¼'t[key] = val'
+// å¦‚æœslotæ˜¯NULLï¼Œtå°±ä¸æ˜¯ä¸€ä¸ªtableï¼Œå¦åˆ™ï¼ŒslotæŒ‡å‘ä¸€ä¸ªæ¡ç›®t[key]ï¼Œå¦‚æœæ²¡æœ‰è¯¥æ¡ç›®å°±æ˜¯luaO_nilobject
+// å…¶å®t[key]è‚¯å®šæ˜¯nilï¼Œå¦åˆ™çš„è¯luaV_fastsetå°±èƒ½æŠŠå®Œæˆèµ‹å€¼äº†
 void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
                      StkId val, const TValue *slot) {
   int loop;  /* counter to avoid infinite loops */
@@ -231,9 +231,9 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     if (slot != NULL) {  /* is 't' a table? */
       Table *h = hvalue(t);  /* save 't' table */
       lua_assert(ttisnil(slot));  /* old value must be nil */
-	  // Ö±½ÓÈ¡Ô­±í
+	  // ç›´æ¥å–åŸè¡¨
       tm = fasttm(L, h->metatable, TM_NEWINDEX);  /* get metamethod */
-	  // Èç¹ûÃ»ÓĞÔª·½·¨Ò²¾Í²»ĞèÒª³¢ÊÔÔª·½·¨ÁË£¬Ö±½Ó´´½¨Ò»¸öÌõÄ¿
+	  // å¦‚æœæ²¡æœ‰å…ƒæ–¹æ³•ä¹Ÿå°±ä¸éœ€è¦å°è¯•å…ƒæ–¹æ³•äº†ï¼Œç›´æ¥åˆ›å»ºä¸€ä¸ªæ¡ç›®
       if (tm == NULL) {  /* no metamethod? */
         if (slot == luaO_nilobject)  /* no previous entry? */
           slot = luaH_newkey(L, h, key);  /* create one */
@@ -246,17 +246,17 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       /* else will try the metamethod */
     }
     else {  /* not a table; check metamethod */
-		// Èç¹ût²»ÊÇ±í£¬ÄÇ¾ÍÈ¡Ôª·½·¨£¬Ö»ÄÜÒÀÀµÔª·½·¨£¬²»ÄÜÏñ±íÒ»Ñù´´½¨ÌõÄ¿
+		// å¦‚æœtä¸æ˜¯è¡¨ï¼Œé‚£å°±å–å…ƒæ–¹æ³•ï¼Œåªèƒ½ä¾èµ–å…ƒæ–¹æ³•ï¼Œä¸èƒ½åƒè¡¨ä¸€æ ·åˆ›å»ºæ¡ç›®
       if (ttisnil(tm = luaT_gettmbyobj(L, t, TM_NEWINDEX)))
         luaG_typeerror(L, t, "index");
     }
     /* try the metamethod */
-	// Èç¹ûÊÇº¯Êı¾Íµ÷ÓÃº¯Êı
+	// å¦‚æœæ˜¯å‡½æ•°å°±è°ƒç”¨å‡½æ•°
     if (ttisfunction(tm)) {
       luaT_callTM(L, tm, t, key, val, 0);
       return;
     }
-	// Ôª·½·¨¿ÉÒÔÇ¶Ì×Ôª·½·¨
+	// å…ƒæ–¹æ³•å¯ä»¥åµŒå¥—å…ƒæ–¹æ³•
     t = tm;  /* else repeat assignment over 'tm' */
     if (luaV_fastset(L, t, key, slot, luaH_get, val))
       return;  /* done */
@@ -389,16 +389,16 @@ static int LEnum (const TValue *l, const TValue *r) {
 /*
 ** Main operation less than; return 'l < r'.
 */
-// Ğ¡ÓÚµÄÖ÷Òª²Ù×÷£¬·µ»Ø'l < r'
+// å°äºçš„ä¸»è¦æ“ä½œï¼Œè¿”å›'l < r'
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  // Êı×Ö
+  // æ•°å­—
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return LTnum(l, r);
-  // ×Ö·û´®
+  // å­—ç¬¦ä¸²
   else if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return l_strcmp(tsvalue(l), tsvalue(r)) < 0;
-  // ³¢ÊÔµ÷ÓÃÔª·½·¨
+  // å°è¯•è°ƒç”¨å…ƒæ–¹æ³•
   else if ((res = luaT_callorderTM(L, l, r, TM_LT)) < 0)  /* no metamethod? */
     luaG_ordererror(L, l, r);  /* error */
   return res;
@@ -413,28 +413,28 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 ** about it (to negate the result of r<l); bit CIST_LEQ in the call
 ** status keeps that information.
 */
-// Ğ¡ÓÚµÈÓÚµÄÖ÷Òª²Ù×÷£»return 'l <= 4',Èç¹ûËûĞèÒªÒ»¸öÔª·½·¨²¢ÇÒÃ»ÓĞ__le£¬ÊÔ×ÅÊ¹ÓÃ__lt
-// »ùÓÚ l <= r (r < l)(¼ÙÉèÔÚÒ»¸ö×ÜµÄË³ĞòÏÂ£©
+// å°äºç­‰äºçš„ä¸»è¦æ“ä½œï¼›return 'l <= 4',å¦‚æœä»–éœ€è¦ä¸€ä¸ªå…ƒæ–¹æ³•å¹¶ä¸”æ²¡æœ‰__leï¼Œè¯•ç€ä½¿ç”¨__lt
+// åŸºäº l <= r (r < l)(å‡è®¾åœ¨ä¸€ä¸ªæ€»çš„é¡ºåºä¸‹ï¼‰
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
-  // Êı×Ö±È½Ï
+  // æ•°å­—æ¯”è¾ƒ
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return LEnum(l, r);
-  // ×Ö·û´®±È½Ï
+  // å­—ç¬¦ä¸²æ¯”è¾ƒ
   else if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return l_strcmp(tsvalue(l), tsvalue(r)) <= 0;
-  // leµÄÔª·½·¨±È½Ï
+  // leçš„å…ƒæ–¹æ³•æ¯”è¾ƒ
   else if ((res = luaT_callorderTM(L, l, r, TM_LE)) >= 0)  /* try 'le' */
     return res;
   else {  /* try 'lt': */
-	// ³¢ÊÔ r < l,Èç¹û¿ÉÒÔµÄ»°¾Í°Ñ½á¹ûÈ¡·´£¬µÃµ½ÁËl <= r
+	// å°è¯• r < l,å¦‚æœå¯ä»¥çš„è¯å°±æŠŠç»“æœå–åï¼Œå¾—åˆ°äº†l <= r
     L->ci->callstatus |= CIST_LEQ;  /* mark it is doing 'lt' for 'le' */
-	// ³¢ÊÔr < l
+	// å°è¯•r < l
     res = luaT_callorderTM(L, r, l, TM_LT);
     L->ci->callstatus ^= CIST_LEQ;  /* clear mark */
     if (res < 0)
       luaG_ordererror(L, l, r);
-	// ½«½á¹ûÈ¡·´
+	// å°†ç»“æœå–å
     return !res;  /* result is negated */
   }
 }
@@ -444,15 +444,15 @@ int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
 ** Main operation for equality of Lua values; return 't1 == t2'.
 ** L == NULL means raw equality (no metamethods)
 */
-// luaÖµÏàµÈµÄÖ÷Òª²Ù×÷£¬·µ»Ø't1 == t2'µÄ½á¹û
+// luaå€¼ç›¸ç­‰çš„ä¸»è¦æ“ä½œï¼Œè¿”å›'t1 == t2'çš„ç»“æœ
 int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
   const TValue *tm;
-  // t1ºÍt2µÄÀàĞÍ²»Ò»Ñù
+  // t1å’Œt2çš„ç±»å‹ä¸ä¸€æ ·
   if (ttype(t1) != ttype(t2)) {  /* not the same variant? */
-	// Ô­Ê¼µÄÀàĞÍÒ²²»Ò»Ñù£¬»òÕßt1ºÍt2µÄÔ­Ê¼ÀàĞÍÒ»ÖÂ£¬µ«ÊÇt1²»ÊÇÊı×ÖÀàĞÍµÄ(Ã»·¨Ö±½Ó±È½Ï)£¬Ö±½Ó·µ»Ø0
+	// åŸå§‹çš„ç±»å‹ä¹Ÿä¸ä¸€æ ·ï¼Œæˆ–è€…t1å’Œt2çš„åŸå§‹ç±»å‹ä¸€è‡´ï¼Œä½†æ˜¯t1ä¸æ˜¯æ•°å­—ç±»å‹çš„(æ²¡æ³•ç›´æ¥æ¯”è¾ƒ)ï¼Œç›´æ¥è¿”å›0
     if (ttnov(t1) != ttnov(t2) || ttnov(t1) != LUA_TNUMBER)
       return 0;  /* only numbers can be equal with different variants */
-	// Ô­Ê¼ÀàĞÍÒ»Ñù
+	// åŸå§‹ç±»å‹ä¸€æ ·
     else {  /* two numbers with different variants */
       lua_Integer i1, i2;  /* compare them as integers */
       return (tointeger(t1, &i1) && tointeger(t2, &i2) && i1 == i2);
@@ -466,10 +466,10 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     case LUA_TBOOLEAN: return bvalue(t1) == bvalue(t2);  /* true must be 1 !! */
     case LUA_TLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
     case LUA_TLCF: return fvalue(t1) == fvalue(t2);
-    case LUA_TSHRSTR: return eqshrstr(tsvalue(t1), tsvalue(t2));			// ×¢Òâ¶Ì×Ö·û´®ºÍ³¤×Ö·û´®µÄ±È½Ï·½Ê½²»Í¬£¬¶Ì×Ö·û´®Ö»ĞèÒª±È½ÏÖ¸Ïò×Ö·û´®µÄÖ¸ÕëÏàµÈ¼´¿É£¬ÒòÎª¶Ì×Ö·û´®ÓÃµÄÊÇ»º´æ»úÖÆ
-    case LUA_TLNGSTR: return luaS_eqlngstr(tsvalue(t1), tsvalue(t2));		// ³¤×Ö·û´®ÏÈ±È½ÏÖ¸ÕëÊÇ·ñÏàÍ¬£¬Èç¹û²»ÏàÍ¬²Å±È½ÏÁ½¸ö×Ö·û´®µÄÄÚÈİÊÇ·ñÏàÍ¬
+    case LUA_TSHRSTR: return eqshrstr(tsvalue(t1), tsvalue(t2));			// æ³¨æ„çŸ­å­—ç¬¦ä¸²å’Œé•¿å­—ç¬¦ä¸²çš„æ¯”è¾ƒæ–¹å¼ä¸åŒï¼ŒçŸ­å­—ç¬¦ä¸²åªéœ€è¦æ¯”è¾ƒæŒ‡å‘å­—ç¬¦ä¸²çš„æŒ‡é’ˆç›¸ç­‰å³å¯ï¼Œå› ä¸ºçŸ­å­—ç¬¦ä¸²ç”¨çš„æ˜¯ç¼“å­˜æœºåˆ¶
+    case LUA_TLNGSTR: return luaS_eqlngstr(tsvalue(t1), tsvalue(t2));		// é•¿å­—ç¬¦ä¸²å…ˆæ¯”è¾ƒæŒ‡é’ˆæ˜¯å¦ç›¸åŒï¼Œå¦‚æœä¸ç›¸åŒæ‰æ¯”è¾ƒä¸¤ä¸ªå­—ç¬¦ä¸²çš„å†…å®¹æ˜¯å¦ç›¸åŒ
     case LUA_TUSERDATA: {
-		// UserData£¬ÏÈÖ±½Ó±È½Ï£¬Èç¹ûÏàµÈÖ±½Ó·µ»Ø1£¬·ñÔòÈ¡È¡t1µÄµÈÓÚ±È½ÏµÄÔª·½·¨£¬t1Ã»ÓĞ¶ÔÓ¦µÄÔª·½·¨£¬È¡t2µÄµÈÓÚ±È½ÏµÄÔª·½·¨£¬
+		// UserDataï¼Œå…ˆç›´æ¥æ¯”è¾ƒï¼Œå¦‚æœç›¸ç­‰ç›´æ¥è¿”å›1ï¼Œå¦åˆ™å–å–t1çš„ç­‰äºæ¯”è¾ƒçš„å…ƒæ–¹æ³•ï¼Œt1æ²¡æœ‰å¯¹åº”çš„å…ƒæ–¹æ³•ï¼Œå–t2çš„ç­‰äºæ¯”è¾ƒçš„å…ƒæ–¹æ³•ï¼Œ
       if (uvalue(t1) == uvalue(t2)) return 1;
       else if (L == NULL) return 0;
       tm = fasttm(L, uvalue(t1)->metatable, TM_EQ);
@@ -478,7 +478,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       break;  /* will try TM */
     }
     case LUA_TTABLE: {
-		// Table£¬ÏÈÖ±½Ó±È½Ï£¬Èç¹ûÏàµÈÖ±½Ó·µ»Ø1£¬·ñÔòÈ¡È¡t1µÄµÈÓÚ±È½ÏµÄÔª·½·¨£¬t1Ã»ÓĞ¶ÔÓ¦µÄÔª·½·¨£¬È¡t2µÄµÈÓÚ±È½ÏµÄÔª·½·¨£¬
+		// Tableï¼Œå…ˆç›´æ¥æ¯”è¾ƒï¼Œå¦‚æœç›¸ç­‰ç›´æ¥è¿”å›1ï¼Œå¦åˆ™å–å–t1çš„ç­‰äºæ¯”è¾ƒçš„å…ƒæ–¹æ³•ï¼Œt1æ²¡æœ‰å¯¹åº”çš„å…ƒæ–¹æ³•ï¼Œå–t2çš„ç­‰äºæ¯”è¾ƒçš„å…ƒæ–¹æ³•ï¼Œ
       if (hvalue(t1) == hvalue(t2)) return 1;
       else if (L == NULL) return 0;
       tm = fasttm(L, hvalue(t1)->metatable, TM_EQ);
@@ -491,7 +491,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
   }
   if (tm == NULL)  /* no TM? */
     return 0;  /* objects are different */
-  // Ê¹ÓÃÔª·½·¨±È½Ï
+  // ä½¿ç”¨å…ƒæ–¹æ³•æ¯”è¾ƒ
   luaT_callTM(L, tm, t1, t2, L->top, 1);  /* call TM */
   return !l_isfalse(L->top);
 }
@@ -504,7 +504,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
 #define isemptystr(o)	(ttisshrstring(o) && tsvalue(o)->shrlen == 0)
 
 /* copy strings in stack from top - n up to top - 1 to buffer */
-// ¿½±´¶ÑÕ»ÖĞµÄ×Ö·û´®£¬´Ótop - nµ½top - 1×Ö·û´®Öµ¿½±´µ½»º³åÇø£¬Ö÷Òªtop - nÆäÊµÊÇ×Ö·û´®Ö¸Õë
+// æ‹·è´å †æ ˆä¸­çš„å­—ç¬¦ä¸²ï¼Œä»top - nåˆ°top - 1å­—ç¬¦ä¸²å€¼æ‹·è´åˆ°ç¼“å†²åŒºï¼Œä¸»è¦top - nå…¶å®æ˜¯å­—ç¬¦ä¸²æŒ‡é’ˆ
 static void copy2buff (StkId top, int n, char *buff) {
   size_t tl = 0;  /* size already copied */
   do {
@@ -519,19 +519,19 @@ static void copy2buff (StkId top, int n, char *buff) {
 ** Main operation for concatenation: concat 'total' values in the stack,
 ** from 'L->top - total' up to 'L->top - 1'.
 */
-// ×Ö·û´®Á¬½ÓµÄÖ÷Òª²Ù×÷
+// å­—ç¬¦ä¸²è¿æ¥çš„ä¸»è¦æ“ä½œ
 void luaV_concat (lua_State *L, int total) {
   lua_assert(total >= 2);
   do {
     StkId top = L->top;
     int n = 2;  /* number of elements handled in this pass (at least 2) */
-	// top-2ºÍtop-1²»ÊÇstring£¬Ò²²»ÊÇ¿ÉÒÔ×ª»»³É×Ö·û´®µÄÊı×ÖÀàĞÍ
+	// top-2å’Œtop-1ä¸æ˜¯stringï¼Œä¹Ÿä¸æ˜¯å¯ä»¥è½¬æ¢æˆå­—ç¬¦ä¸²çš„æ•°å­—ç±»å‹
     if (!(ttisstring(top-2) || cvt2str(top-2)) || !tostring(L, top-1))
       luaT_trybinTM(L, top-2, top-1, top-2, TM_CONCAT);
-	// Õ»¶¥µÄµ¹ÊıµÚÒ»ÖµÎª¿Õ´®
+	// æ ˆé¡¶çš„å€’æ•°ç¬¬ä¸€å€¼ä¸ºç©ºä¸²
     else if (isemptystr(top - 1))  /* second operand is empty? */
       cast_void(tostring(L, top - 2));  /* result is first operand */
-	// Õ»¶¥µÄµ¹ÊıµÚ¶şÖµÎª¿Õ´®
+	// æ ˆé¡¶çš„å€’æ•°ç¬¬äºŒå€¼ä¸ºç©ºä¸²
     else if (isemptystr(top - 2)) {  /* first operand is an empty string? */
       setobjs2s(L, top - 2, top - 1);  /* result is second op. */
     }
@@ -557,11 +557,11 @@ void luaV_concat (lua_State *L, int total) {
       }
       setsvalue2s(L, top - n, ts);  /* create result */
     }
-	// ºÏ²¢ÁË n - 1
+	// åˆå¹¶äº† n - 1
     total -= n-1;  /* got 'n' strings to create 1 new */
-	// ÁôÒ»¸ö±£´æ½á¹û
+	// ç•™ä¸€ä¸ªä¿å­˜ç»“æœ
     L->top -= n-1;  /* popped 'n' strings and pushed one */
-	// Ò»Ö±Ñ­»·Ö±µ½Ö»ÓĞÒ»¸ö½á¹ûÁôÏÂÀ´
+	// ä¸€ç›´å¾ªç¯ç›´åˆ°åªæœ‰ä¸€ä¸ªç»“æœç•™ä¸‹æ¥
   } while (total > 1);  /* repeat until only 1 result left */
 }
 
@@ -569,31 +569,31 @@ void luaV_concat (lua_State *L, int total) {
 /*
 ** Main operation 'ra' = #rb'.
 */
-// Ö÷ÒªµÄ²Ù×÷Îª'ra' = '#rb',µÃµ½rbµÄ³¤¶È
+// ä¸»è¦çš„æ“ä½œä¸º'ra' = '#rb',å¾—åˆ°rbçš„é•¿åº¦
 void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
   const TValue *tm;
   switch (ttype(rb)) {
     case LUA_TTABLE: {
       Table *h = hvalue(rb);
-	  // Èç¹ûÊÇ±íµÄ»°£¬ÓÅÏÈµ÷ÓÃÈ¡³¤¶ÈµÄÔª·½·¨
+	  // å¦‚æœæ˜¯è¡¨çš„è¯ï¼Œä¼˜å…ˆè°ƒç”¨å–é•¿åº¦çš„å…ƒæ–¹æ³•
       tm = fasttm(L, h->metatable, TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
-	  // Èç¹ûÔ­·½·¨²»´æÔÚ£¬µ÷ÓÃluaH_getn£¬×¢Òâ£ºluaH_getn¶ÔÓÚÓĞ¿Õ¶´µÄ±í²»Ò»¶¨×¼È·
+	  // å¦‚æœåŸæ–¹æ³•ä¸å­˜åœ¨ï¼Œè°ƒç”¨luaH_getnï¼Œæ³¨æ„ï¼šluaH_getnå¯¹äºæœ‰ç©ºæ´çš„è¡¨ä¸ä¸€å®šå‡†ç¡®
       setivalue(ra, luaH_getn(h));  /* else primitive len */
       return;
     }
     case LUA_TSHRSTR: {
-		// ¶Ì×Ö·û´®£¬Ö±½ÓÈ¡³¤¶È
+		// çŸ­å­—ç¬¦ä¸²ï¼Œç›´æ¥å–é•¿åº¦
       setivalue(ra, tsvalue(rb)->shrlen);
       return;
     }
     case LUA_TLNGSTR: {
-		// ³¤×Ö·û´®£¬Ö±½ÓÈ¡³¤¶È
+		// é•¿å­—ç¬¦ä¸²ï¼Œç›´æ¥å–é•¿åº¦
       setivalue(ra, tsvalue(rb)->u.lnglen);
       return;
     }
     default: {  /* try metamethod */
-		// ³¢ÊÔÔ­·½·¨
+		// å°è¯•åŸæ–¹æ³•
       tm = luaT_gettmbyobj(L, rb, TM_LEN);
       if (ttisnil(tm))  /* no metamethod? */
         luaG_typeerror(L, rb, "get length of");
@@ -610,9 +610,9 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
 ** 'floor(q) == trunc(q)' when 'q >= 0' or when 'q' is integer,
 ** otherwise 'floor(q) == trunc(q) - 1'.
 */
-// ÕûÊı³ı·¨£»·µ»Ø 'm / n',²¢ÇÒÊÇm/nÒÔºóÉáÈ¥È¡Õû
+// æ•´æ•°é™¤æ³•ï¼›è¿”å› 'm / n',å¹¶ä¸”æ˜¯m/nä»¥åèˆå»å–æ•´
 lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
-	// ÌØÊâÇé¿öÊÇ:nÎª-1»òÕß0
+	// ç‰¹æ®Šæƒ…å†µæ˜¯:nä¸º-1æˆ–è€…0
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
       luaG_runerror(L, "attempt to divide by zero");
@@ -620,7 +620,7 @@ lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
   }
   else {
     lua_Integer q = m / n;  /* perform C division */
-	// Èç¹ûm / nÎª¸ºÊı£¬²¢ÇÒ²»ÄÜÕû³ı£¬½«q -= 1
+	// å¦‚æœm / nä¸ºè´Ÿæ•°ï¼Œå¹¶ä¸”ä¸èƒ½æ•´é™¤ï¼Œå°†q -= 1
     if ((m ^ n) < 0 && m % n != 0)  /* 'm/n' would be negative non-integer? */
       q -= 1;  /* correct result for different rounding */
     return q;
@@ -634,7 +634,7 @@ lua_Integer luaV_div (lua_State *L, lua_Integer m, lua_Integer n) {
 ** about luaV_div.)
 */
 lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
-	// ÌØÊâÇé¿öÊÇ:nÎª-1»òÕß0
+	// ç‰¹æ®Šæƒ…å†µæ˜¯:nä¸º-1æˆ–è€…0
   if (l_castS2U(n) + 1u <= 1u) {  /* special cases: -1 or 0 */
     if (n == 0)
       luaG_runerror(L, "attempt to perform 'n%%0'");
@@ -642,7 +642,7 @@ lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
   }
   else {
     lua_Integer r = m % n;
-	// ·Ç¸ºÕûÊı
+	// éè´Ÿæ•´æ•°
     if (r != 0 && (m ^ n) < 0)  /* 'm/n' would be non-integer negative? */
       r += n;  /* correct result for different rounding */
     return r;
@@ -651,13 +651,13 @@ lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
 
 
 /* number of bits in an integer */
-// Ò»¸öÕûÊıµÄÎ»Êı
+// ä¸€ä¸ªæ•´æ•°çš„ä½æ•°
 #define NBITS	cast_int(sizeof(lua_Integer) * CHAR_BIT)
 
 /*
 ** Shift left operation. (Shift right just negates 'y'.)
 */
-// ×óÒÆÎ»²Ù×÷£¨ÓÒÒÆÎ»²Ù×÷Ö»ÊÇ½«yÈ¡¸ºÊı£©
+// å·¦ç§»ä½æ“ä½œï¼ˆå³ç§»ä½æ“ä½œåªæ˜¯å°†yå–è´Ÿæ•°ï¼‰
 lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y) {
   if (y < 0) {  /* shift right? */
     if (y <= -NBITS) return 0;
@@ -675,7 +675,7 @@ lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y) {
 ** whether there is a cached closure with the same upvalues needed by
 ** new closure to be created.
 */
-// ¼ì²éº¯ÊıpÖĞµÄ±Õ°ü»º´æÊÇ·ñ¿ÉÒÔÖØÓÃ£¬¼ì²éÊÇ·ñĞÂ´´½¨µÄ±Õ°üÊÇ·ñºÍ»º´æµÄ±Õ°üÓĞ×ÅÏàÍ¬µÄupvalues
+// æ£€æŸ¥å‡½æ•°pä¸­çš„é—­åŒ…ç¼“å­˜æ˜¯å¦å¯ä»¥é‡ç”¨ï¼Œæ£€æŸ¥æ˜¯å¦æ–°åˆ›å»ºçš„é—­åŒ…æ˜¯å¦å’Œç¼“å­˜çš„é—­åŒ…æœ‰ç€ç›¸åŒçš„upvalues
 static LClosure *getcached (Proto *p, UpVal **encup, StkId base) {
   LClosure *c = p->cache;
   if (c != NULL) {  /* is there a cached closure? */
@@ -698,18 +698,18 @@ static LClosure *getcached (Proto *p, UpVal **encup, StkId base) {
 ** already black (which means that 'cache' was already cleared by the
 ** GC).
 */
-// ´´½¨Ò»¸öĞÂµÄlua±Õ°ü£¬½«ËüÑ¹Èë¶ÑÕ»²¢ÇÒ³õÊ¼»¯ËûµÄupvalues£¬
-// ×¢ÒâÈç¹ûprototypeÃ»ÓĞÖÃºÚ£¬½«±Õ°ü»º´æÆğÀ´
+// åˆ›å»ºä¸€ä¸ªæ–°çš„luaé—­åŒ…ï¼Œå°†å®ƒå‹å…¥å †æ ˆå¹¶ä¸”åˆå§‹åŒ–ä»–çš„upvaluesï¼Œ
+// æ³¨æ„å¦‚æœprototypeæ²¡æœ‰ç½®é»‘ï¼Œå°†é—­åŒ…ç¼“å­˜èµ·æ¥
 static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
                          StkId ra) {
   int nup = p->sizeupvalues;
   Upvaldesc *uv = p->upvalues;
   int i;
-  // ´´½¨Ò»¸öĞÂµÄlua±Õ°ü
+  // åˆ›å»ºä¸€ä¸ªæ–°çš„luaé—­åŒ…
   LClosure *ncl = luaF_newLclosure(L, nup);
   ncl->p = p;
   setclLvalue(L, ra, ncl);  /* anchor new closure in stack */
-  // ¸øupvales¸³Öµ
+  // ç»™upvalesèµ‹å€¼
   for (i = 0; i < nup; i++) {  /* fill in its upvalues */
     if (uv[i].instack)  /* upvalue refers to local variable? */
       ncl->upvals[i] = luaF_findupval(L, base + uv[i].idx);
@@ -726,7 +726,7 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
 /*
 ** finish execution of an opcode interrupted by an yield
 */
-// Íê³ÉÓÉyieldÖĞ¶ÏµÄÖ¸ÁîÖ´ĞĞ
+// å®Œæˆç”±yieldä¸­æ–­çš„æŒ‡ä»¤æ‰§è¡Œ
 void luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->ci;
   StkId base = ci->u.l.base;
@@ -744,14 +744,14 @@ void luaV_finishOp (lua_State *L) {
     case OP_LE: case OP_LT: case OP_EQ: {
       int res = !l_isfalse(L->top - 1);
       L->top--;
-	  // Ê¹ÓÃ < À´´úÌæ <=(¾ßÌå²é¿´luaV_lessequalº¯Êı)
+	  // ä½¿ç”¨ < æ¥ä»£æ›¿ <=(å…·ä½“æŸ¥çœ‹luaV_lessequalå‡½æ•°)
       if (ci->callstatus & CIST_LEQ) {  /* "<=" using "<" instead? */
         lua_assert(op == OP_LE);
         ci->callstatus ^= CIST_LEQ;  /* clear mark */
         res = !res;  /* negate result */
       }
       lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_JMP);
-	  // ÅĞ¶ÏÊ§°Ü£¬Ìø¹ıÖ¸Áî
+	  // åˆ¤æ–­å¤±è´¥ï¼Œè·³è¿‡æŒ‡ä»¤
       if (res != GETARG_A(inst))  /* condition failed? */
         ci->u.l.savedpc++;  /* skip jump instruction */
       break;
@@ -800,7 +800,8 @@ void luaV_finishOp (lua_State *L) {
 ** some macros for common tasks in 'luaV_execute'
 */
 
-
+// ä»å¯„å­˜å™¨ä¸­å–æŒ‡ä»¤ä¹Ÿå°±æ˜¯åœ¨å‰é¢ä»¥Rå¼€å¤´çš„å®ä¸­ï¼Œå®é™…ä»£ç ä¸­ä¼šä½¿ç”¨ä¸€ä¸ªbase
+// å†åŠ ä¸Šå¯¹åº”çš„åœ°å€ï¼Œå¦‚ï¼š
 #define RA(i)	(base+GETARG_A(i))
 #define RB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgR, base+GETARG_B(i))
 #define RC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgR, base+GETARG_C(i))
@@ -829,8 +830,8 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* fetch an instruction and prepare its execution */
-// »ñÈ¡Ö¸Áî²¢×¼±¸Ö´ĞĞ
-// ´Ó±£´æµÄpcÖĞÈ¡µÃÏÂÒ»ÌõÖ¸Áî
+// è·å–æŒ‡ä»¤å¹¶å‡†å¤‡æ‰§è¡Œ
+// ä»ä¿å­˜çš„pcä¸­å–å¾—ä¸‹ä¸€æ¡æŒ‡ä»¤
 #define vmfetch()	{ \
   i = *(ci->u.l.savedpc++); \
   if (L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) \
@@ -867,23 +868,23 @@ void luaV_execute (lua_State *L) {
   TValue *k;
   StkId base;
   ci->callstatus |= CIST_FRESH;  /* fresh invocation of 'luaV_execute" */
-  // Ö¡¸Ä±äÊ±µÄÖØÈëµã£¨µ÷ÓÃ/·µ»Ø£©
+  // å¸§æ”¹å˜æ—¶çš„é‡å…¥ç‚¹ï¼ˆè°ƒç”¨/è¿”å›ï¼‰
  newframe:  /* reentry point when frame changes (call/return) */
   lua_assert(ci == L->ci);
-  // º¯Êı±Õ°üµÄ¾Ö²¿ÒıÓÃ
+  // å‡½æ•°é—­åŒ…çš„å±€éƒ¨å¼•ç”¨
   cl = clLvalue(ci->func);  /* local reference to function's closure */
-  // ¶Ôº¯Êı³£Á¿±íµÄ¾Ö²¿ÒıÓÃ
+  // å¯¹å‡½æ•°å¸¸é‡è¡¨çš„å±€éƒ¨å¼•ç”¨
   k = cl->p->k;  /* local reference to function's constant table */
-  // º¯ÊıbaseµÄ±¾µØ¸±±¾
+  // å‡½æ•°baseçš„æœ¬åœ°å‰¯æœ¬
   base = ci->u.l.base;  /* local copy of function's base */
   /* main loop of interpreter */
-  // ½âÊÍÆ÷µÄÖ÷Ñ­»·
+  // è§£é‡Šå™¨çš„ä¸»å¾ªç¯
   for (;;) {
     Instruction i;
     StkId ra;
-    // È¡Ö¸Áî
+    // å–æŒ‡ä»¤
     vmfetch();
-    // ¸ù¾İ²»Í¬µÄÖ¸Áî¼¯£¬²»Í¬µÄ´¦Àí
+    // æ ¹æ®ä¸åŒçš„æŒ‡ä»¤é›†ï¼Œä¸åŒçš„å¤„ç†
     vmdispatch (GET_OPCODE(i)) {
       vmcase(OP_MOVE) {
         setobjs2s(L, ra, RB(i));

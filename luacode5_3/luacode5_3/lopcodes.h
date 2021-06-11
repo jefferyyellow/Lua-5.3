@@ -28,34 +28,34 @@
   unsigned argument.
 ===========================================================================*/
 /*
-	���Ǽ���ָ�����޷�����,����ָ��ĸ�6λΪ�����룬ָ�����������ֶΣ�
-	'A' : 8λ
-	'B' : 9λ
-	'C' : 9λ
-	'Ax'��26λ('A', 'B'�� 'C'������һ��,8+9+9=26)
-	'Bx'��18λ('B' and 'C'������һ��)
-	'sBx'�������ŵ�Bx
+	我们假设指令是无符号数,所有指令的高6位为操作码，指令包含下面的字段：
+	'A' : 8位
+	'B' : 9位
+	'C' : 9位
+	'Ax'：26位('A', 'B'和 'C'整合在一起,8+9+9=26)
+	'Bx'：18位('B' and 'C'整合在一起)
+	'sBx'：带符号的Bx
 */
 
-// ������ָ���ʽ
-// (iABC)	������  A	B	C
-// (iABx)	������	A	Bx
-// (iAsBx)	������	A	sBx
-// (iAx)	������	Ax
+// 基本的指令格式
+// (iABC)	操作码  A	B	C
+// (iABx)	操作码	A	Bx
+// (iAsBx)	操作码	A	sBx
+// (iAx)	操作码	Ax
 enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 
 
 /*
 ** size and position of opcode arguments.
 */
-// ���������Ĵ�С��λ�� ��С���Ƕ��ǣ�λ
+// 操作参数的大小和位置 大小但是都是：位
 #define SIZE_C		9
 #define SIZE_B		9
 #define SIZE_Bx		(SIZE_C + SIZE_B)
 #define SIZE_A		8
 #define SIZE_Ax		(SIZE_C + SIZE_B + SIZE_A)
 
-// ������λ��С
+// 操作码位大小
 #define SIZE_OP		6
 
 #define POS_OP		0
@@ -92,10 +92,10 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 
 
 /* creates a mask with 'n' 1 bits at position 'p' */
-// ��һ������0ȡ���õ�0xFFFFFFFF
-// �ڶ���������nλ��������߲��ֶ���1���ұ߲��ֶ���0��
-// ��������ȡ����������߲��ֶ���0���ұ߲��ֶ���1
-// ���Ĳ���������pλ
+// 第一步：将0取反得到0xFFFFFFFF
+// 第二步：左移n位，导致左边部分都是1，右边部分都是0，
+// 第三步：取反，导致左边部分都是0，右边部分都是1
+// 第四步：再左移p位
 #define MASK1(n,p)	((~((~(Instruction)0)<<(n)))<<(p))
 
 /* creates a mask with 'n' 0 bits at position 'p' */
@@ -104,7 +104,7 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 /*
 ** the following macros help to manipulate instructions
 */
-// ȡ�������ֵ,���ò������ֵ
+// 取操作码的值,设置操作码的值
 #define GET_OPCODE(i)	(cast(OpCode, ((i)>>POS_OP) & MASK1(SIZE_OP,0)))
 #define SET_OPCODE(i,o)	((i) = (((i)&MASK0(SIZE_OP,POS_OP)) | \
 		((cast(Instruction, o)<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
@@ -113,39 +113,39 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
                 ((cast(Instruction, v)<<pos)&MASK1(size,pos))))
 
-// ȡ����A��ֵ,���ò���A��ֵ
+// 取参数A的值,设置参数A的值
 #define GETARG_A(i)	getarg(i, POS_A, SIZE_A)
 #define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
-// ȡ����B��ֵ�����ò���B��ֵ
+// 取参数B的值，设置参数B的值
 #define GETARG_B(i)	getarg(i, POS_B, SIZE_B)
 #define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
-// ȡ����C��ֵ�����ò���C��ֵ
+// 取参数C的值，设置参数C的值
 #define GETARG_C(i)	getarg(i, POS_C, SIZE_C)
 #define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
 
-// ȡ����Bx��ֵ�����ò���Bx��ֵ
+// 取参数Bx的值，设置参数Bx的值
 #define GETARG_Bx(i)	getarg(i, POS_Bx, SIZE_Bx)
 #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
 
-// ȡ����Ax��ֵ�����ò���Ax��ֵ
+// 取参数Ax的值，设置参数Ax的值
 #define GETARG_Ax(i)	getarg(i, POS_Ax, SIZE_Ax)
 #define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
-// ȡ����sBx��ֵ�����ò���sBx��ֵ
+// 取参数sBx的值，设置参数sBx的值
 #define GETARG_sBx(i)	(GETARG_Bx(i)-MAXARG_sBx)
 #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
 
-// ����ָ�iABC��ʽ
+// 创建指令，iABC格式
 #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, b)<<POS_B) \
 			| (cast(Instruction, c)<<POS_C))
 
-// ����ָ�iABx��ʽ
+// 创建指令，iABx格式
 #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, bc)<<POS_Bx))
 
-// ����ָ�iAx��ʽ
+// 创建指令，iAx格式
 #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_Ax))
 
@@ -153,17 +153,19 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 /*
 ** Macros to operate RK indices
 */
-
+// 结合起来看，这个宏的含义就很简单了：判断这个数据的第八位是不是l ，如果是，则认为
+// 应该从K数组中获取数据，否则就是从函数战寄存器中获取数据。后面会结合具体的指令来解释
+// 这个格式。
 /* this bit 1 means constant (0 means register) */
-// ��λΪ1��ʾ������0��ʾ�Ĵ���
+// 该位为1表示常量，0表示寄存器
 #define BITRK		(1 << (SIZE_B - 1))
 
 /* test whether value is a constant */
-// �Ƿ��ǳ���
+// 是否是常量
 #define ISK(x)		((x) & BITRK)
 
 /* gets the index of the constant */
-// �õ�����������
+// 得到常量的索引
 #define INDEXK(r)	((int)(r) & ~BITRK)
 
 #if !defined(MAXINDEXRK)  /* (for debugging only) */
@@ -171,7 +173,7 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #endif
 
 /* code a constant index as a RK value */
-// ��������������ΪRKֵ
+// 将常量索引编码为RK值
 #define RKASK(x)	((x) | BITRK)
 
 
@@ -191,7 +193,7 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 /*
 ** grep "ORDER OP" if you change these enums
 */
-
+// 指令枚举，如果修改了枚举的，注意修改“ORDER OP”的地方
 typedef enum {
 /*----------------------------------------------------------------------
 name		args	description
@@ -298,20 +300,42 @@ OP_EXTRAARG		/*	Ax		extra (larger) argument for previous opcode	*/
 ** bit 6: instruction set register A
 ** bit 7: operator is a test (next instruction must be a jump)
 */
+// 指令属性掩码。格式是：
+// 0-1位：操作码
+// 2-3位：C参数码
+// 4-5位：B参数码
+// 6位：表示这个指令会不会赋值给寄存器A【R（A）】
+// 7位：表示这是不是一条逻辑测试相关的指令，（下一条指令必须是跳转）
 
+// B、C参数格式
 enum OpArgMask {
-  OpArgN,  /* argument is not used */
-  OpArgU,  /* argument is used */
-  OpArgR,  /* argument is a register or a jump offset */
-  OpArgK   /* argument is a constant or register/constant */
+  OpArgN,  // 参数未使用 /* argument is not used */
+  OpArgU,  // 已使用参数 /* argument is used */
+  OpArgR,  // 该参数是寄存器或跳转偏移 /* argument is a register or a jump offset */
+  OpArgK   // 该参数是常量还是寄存器 /* argument is a constant or register/constant */
 };
 
 LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
 
+// 对应与opmode的宏
+// t：表示这是不是一条逻辑测试相关的指令
+// a：表示这个指令会不会赋值给R（A）
+// b/c：B、C的参数格式
+// mode：这个OpCode的格式
+// 第7位：t
+// 第6位：a
+// 第5位，第4位（2位：4-5）：b
+// 第3位，第2位（2位：2-3）：c
+// 第1位，第0位（2位：0-1）：m
+// 取2位：第0-1位，得到操作码模式
 #define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 3))
+// 取2位：第2-3位，得到B的模式
 #define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 4) & 3))
+// 取2位：第4-5位，得到C的模式
 #define getCMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 2) & 3))
+// 取1位，第6位，检查A的模式
 #define testAMode(m)	(luaP_opmodes[m] & (1 << 6))
+// 取1位，第7位，检查T的模式
 #define testTMode(m)	(luaP_opmodes[m] & (1 << 7))
 
 

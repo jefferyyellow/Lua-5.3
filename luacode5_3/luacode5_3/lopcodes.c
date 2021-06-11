@@ -16,7 +16,7 @@
 
 
 /* ORDER OP */
-
+// 指令名字
 LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   "MOVE",
   "LOADK",
@@ -68,7 +68,11 @@ LUAI_DDEF const char *const luaP_opnames[NUM_OPCODES+1] = {
   NULL
 };
 
-
+// 第8位：t
+// 第7位：a
+// 第5位，第4位：b
+// 第3位，第2位：c
+// 第1位，第0位：m
 #define opmode(t,a,b,c,m) (((t)<<7) | ((a)<<6) | ((b)<<4) | ((c)<<2) | (m))
 
 LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
