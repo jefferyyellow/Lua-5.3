@@ -22,3 +22,22 @@ end
 -- xpcall(1,2,3,4,5,6,7,8,9,10)
 
 TestVarParam(1,2,3,4,5,6,7)
+
+print("全局：")
+a = os.clock()
+for i = 1,10000000 do
+local x = math.sin(i)
+end
+b = os.clock()
+print(b-a)
+
+
+
+print("局部：")
+a = os.clock()
+local sin = math.sin
+for i = 1,10000000 do
+local x = sin(i)
+end
+b = os.clock()
+print(b-a)

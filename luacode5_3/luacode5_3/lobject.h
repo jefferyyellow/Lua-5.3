@@ -453,6 +453,8 @@ typedef struct Upvaldesc {
 ** Description of a local variable for function prototypes
 ** (used for debug information)
 */
+// 函数原型的局部变量描述
+// 用于调试信息
 typedef struct LocVar {
   // 变量名
   TString *varname;

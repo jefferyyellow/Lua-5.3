@@ -555,22 +555,30 @@ void luaK_setoneret (FuncState *fs, expdesc *e) {
 */
 void luaK_dischargevars (FuncState *fs, expdesc *e) {
   switch (e->k) {
+    // 已经在寄存器里了
+	// local a = 10;如果一个变量是VLOCAL ，说明前面已经看到过这个变量了，比如这里的局部变量a ，它在第
+	// 一行代码中已经出现了，那么它既不需要重定向，也不需要额外的语句把这个值加载进来的。
     case VLOCAL: {  /* already in a register */
+      // 变成了一个不需要重定位的值
       e->k = VNONRELOC;  /* becomes a non-relocatable value */
       break;
     }
+    // upvalue变量
     case VUPVAL: {  /* move value to some (pending) register */
       e->u.info = luaK_codeABC(fs, OP_GETUPVAL, 0, e->u.info, 0);
       e->k = VRELOCABLE;
       break;
     }
+    // 索引变量
     case VINDEXED: {
       OpCode op;
       freereg(fs, e->u.ind.idx);
+      // 局部变量
       if (e->u.ind.vt == VLOCAL) {  /* is 't' in a register? */
         freereg(fs, e->u.ind.t);
         op = OP_GETTABLE;
       }
+      // upvalue
       else {
         lua_assert(e->u.ind.vt == VUPVAL);
         op = OP_GETTABUP;  /* 't' is in an upvalue */
@@ -592,6 +600,7 @@ void luaK_dischargevars (FuncState *fs, expdesc *e) {
 ** Ensures expression value is in register 'reg' (and therefore
 ** 'e' will become a non-relocatable expression).
 */
+// 确保表达式值在寄存器“reg”中（因此'e' 将成为不可重定位的表达式）。
 static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
   luaK_dischargevars(fs, e);
   switch (e->k) {
@@ -615,11 +624,15 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
       luaK_codek(fs, reg, luaK_intK(fs, e->u.ival));
       break;
     }
+	// 当一个变量类型是重定向时，根据reg参数来写入这个指令的参数A 。在下面的代码中，就是
+	// 根据传人的reg参数，也就是获取到全局变量之后存放的寄存器地址，来重新回填到
+	// 指令的A参数中。
     case VRELOCABLE: {
       Instruction *pc = &getinstruction(fs, e);
       SETARG_A(*pc, reg);  /* instruction will put result in 'reg' */
       break;
     }
+    // 如果一个表达式类型是VNONRELOC ，也就是不需要重定位，那么直接生成MOVE指令来完成变量的赋值。
     case VNONRELOC: {
       if (reg != e->u.info)
         luaK_codeABC(fs, OP_MOVE, reg, e->u.info, 0);
@@ -701,9 +714,15 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
 ** lists) is in next available register.
 */
 void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
+	// 根据变量所在的不同作用域（ local, global, upvalue )来决定这个变量是否需要重定向。
   luaK_dischargevars(fs, e);
   freeexp(fs, e);
+  // 调用luaK_reserveregs 函数，分配可用的函数寄存器空间，得到这个空间对应的寄存器
+  // 索引。有了空间，才能存储变量。
   luaK_reserveregs(fs, 1);
+  // 调用exp2reg函数，真正完成把表达式的数据放入寄存器空间的工作。在这个函数中，最
+  // 终又会调用discharge2reg 函数，这个函数式根据不同的表达式类型（ NIL ，布尔表达式，
+  // 数字等）来生成存取表达式的值到寄存器的字节码。
   exp2reg(fs, e, fs->freereg - 1);
 }
 

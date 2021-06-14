@@ -28,34 +28,34 @@
   unsigned argument.
 ===========================================================================*/
 /*
-	æˆ‘ä»¬å‡è®¾æŒ‡ä»¤æ˜¯æ— ç¬¦å·æ•°,æ‰€æœ‰æŒ‡ä»¤çš„é«˜6ä½ä¸ºæ“ä½œç ï¼ŒæŒ‡ä»¤åŒ…å«ä¸‹é¢çš„å­—æ®µï¼š
-	'A' : 8ä½
-	'B' : 9ä½
-	'C' : 9ä½
-	'Ax'ï¼š26ä½('A', 'B'å’Œ 'C'æ•´åˆåœ¨ä¸€èµ·,8+9+9=26)
-	'Bx'ï¼š18ä½('B' and 'C'æ•´åˆåœ¨ä¸€èµ·)
-	'sBx'ï¼šå¸¦ç¬¦å·çš„Bx
+	ÎÒÃÇ¼ÙÉèÖ¸ÁîÊÇÎŞ·ûºÅÊı,ËùÓĞÖ¸ÁîµÄ¸ß6Î»Îª²Ù×÷Âë£¬Ö¸Áî°üº¬ÏÂÃæµÄ×Ö¶Î£º
+	'A' : 8Î»
+	'B' : 9Î»
+	'C' : 9Î»
+	'Ax'£º26Î»('A', 'B'ºÍ 'C'ÕûºÏÔÚÒ»Æğ,8+9+9=26)
+	'Bx'£º18Î»('B' and 'C'ÕûºÏÔÚÒ»Æğ)
+	'sBx'£º´ø·ûºÅµÄBx
 */
 
-// åŸºæœ¬çš„æŒ‡ä»¤æ ¼å¼
-// (iABC)	æ“ä½œç   A	B	C
-// (iABx)	æ“ä½œç 	A	Bx
-// (iAsBx)	æ“ä½œç 	A	sBx
-// (iAx)	æ“ä½œç 	Ax
+// »ù±¾µÄÖ¸Áî¸ñÊ½
+// (iABC)	²Ù×÷Âë  A	B	C
+// (iABx)	²Ù×÷Âë	A	Bx
+// (iAsBx)	²Ù×÷Âë	A	sBx
+// (iAx)	²Ù×÷Âë	Ax
 enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 
 
 /*
 ** size and position of opcode arguments.
 */
-// æ“ä½œå‚æ•°çš„å¤§å°å’Œä½ç½® å¤§å°ä½†æ˜¯éƒ½æ˜¯ï¼šä½
+// ²Ù×÷²ÎÊıµÄ´óĞ¡ºÍÎ»ÖÃ ´óĞ¡µ«ÊÇ¶¼ÊÇ£ºÎ»
 #define SIZE_C		9
 #define SIZE_B		9
-#define SIZE_Bx		(SIZE_C + SIZE_B)
+#define SIZE_Bx		(SIZE_C + SIZE_B)					// 18
 #define SIZE_A		8
-#define SIZE_Ax		(SIZE_C + SIZE_B + SIZE_A)
+#define SIZE_Ax		(SIZE_C + SIZE_B + SIZE_A)			// 26
 
-// æ“ä½œç ä½å¤§å°
+// ²Ù×÷ÂëÎ»´óĞ¡
 #define SIZE_OP		6
 
 #define POS_OP		0
@@ -71,40 +71,54 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 ** we use (signed) int to manipulate most arguments,
 ** so they must fit in LUAI_BITSINT-1 bits (-1 for sign)
 */
+// ²Ù×÷Âë²ÎÊıµÄÏŞÖÆ¡£
+// ÎÒÃÇÊ¹ÓÃ£¨ÓĞ·ûºÅµÄ£©int À´²Ù×÷´ó¶àÊı²ÎÊı£¬
+// ËùÒÔËüÃÇ±ØĞëÊÊºÏ LUAI_BITSINT - 1 Î»£¨ - 1 ±íÊ¾·ûºÅ£©
+// BxµÄ×î´óÖµ
 #if SIZE_Bx < LUAI_BITSINT-1
+// ÎŞ·ûºÅÊı×î´óÖµ
 #define MAXARG_Bx        ((1<<SIZE_Bx)-1)
-#define MAXARG_sBx        (MAXARG_Bx>>1)         /* 'sBx' is signed */
+// ÓĞ·ûºÅÊı×î´óÖµ
+#define MAXARG_sBx        (MAXARG_Bx>>1)        // sBx±íÊ¾ÓĞ·ûºÅµÄBx  /* 'sBx' is signed */
 #else
 #define MAXARG_Bx        MAX_INT
 #define MAXARG_sBx        MAX_INT
 #endif
 
+// AxµÄ×î´óÖµ
 #if SIZE_Ax < LUAI_BITSINT-1
 #define MAXARG_Ax	((1<<SIZE_Ax)-1)
 #else
 #define MAXARG_Ax	MAX_INT
 #endif
 
-
+// A B C²Ù×÷ÊıµÄ×î´óÖµ
 #define MAXARG_A        ((1<<SIZE_A)-1)
 #define MAXARG_B        ((1<<SIZE_B)-1)
 #define MAXARG_C        ((1<<SIZE_C)-1)
 
 
 /* creates a mask with 'n' 1 bits at position 'p' */
-// ç¬¬ä¸€æ­¥ï¼šå°†0å–åå¾—åˆ°0xFFFFFFFF
-// ç¬¬äºŒæ­¥ï¼šå·¦ç§»nä½ï¼Œå¯¼è‡´å·¦è¾¹éƒ¨åˆ†éƒ½æ˜¯1ï¼Œå³è¾¹éƒ¨åˆ†éƒ½æ˜¯0ï¼Œ
-// ç¬¬ä¸‰æ­¥ï¼šå–åï¼Œå¯¼è‡´å·¦è¾¹éƒ¨åˆ†éƒ½æ˜¯0ï¼Œå³è¾¹éƒ¨åˆ†éƒ½æ˜¯1
-// ç¬¬å››æ­¥ï¼šå†å·¦ç§»pä½
+// µÚÒ»²½£º½«0È¡·´µÃµ½0xFFFFFFFF
+// µÚ¶ş²½£º×óÒÆnÎ»£¬µ¼ÖÂ×ó±ß²¿·Ö¶¼ÊÇ1£¬ÓÒ±ß²¿·Ö¶¼ÊÇ0£¬
+// µÚÈı²½£ºÈ¡·´£¬µ¼ÖÂ×ó±ß²¿·Ö¶¼ÊÇ0£¬ÓÒ±ß²¿·Ö¶¼ÊÇ1
+// µÚËÄ²½£ºÔÙ×óÒÆpÎ»
+// ¾ÍÊÇ´ÓµÚpÎ»¿ªÊ¼µÄ×ó±ßnÎ»¶¼ÊÇ1
+// MASK1(8,3)µÄÖµÊÇ£º011111111000
+// MASK1(7,4)µÄÖµÊÇ£º011111110000
 #define MASK1(n,p)	((~((~(Instruction)0)<<(n)))<<(p))
 
 /* creates a mask with 'n' 0 bits at position 'p' */
+// ´´½¨Ò»¸öÑÚÂë´ÓµÚpÎ»¿ªÊ¼µÄ×ó±ßnÎ»¶¼ÊÇ0
+// MASK0(7, 4)µÄÖµÊÇ£º1111111111111111111111111111111111111111111111111111100000001111
+// MASK0(8, 3)µÄÖµÊÇ£º1111111111111111111111111111111111111111111111111111100000000111
 #define MASK0(n,p)	(~MASK1(n,p))
 
 /*
 ** the following macros help to manipulate instructions
 */
-// å–æ“ä½œç çš„å€¼,è®¾ç½®æ“ä½œç çš„å€¼
+// È¡²Ù×÷ÂëµÄÖµ,ÉèÖÃ²Ù×÷ÂëµÄÖµ
+// È¡µÍSIZE_OP(6)Î»
 #define GET_OPCODE(i)	(cast(OpCode, ((i)>>POS_OP) & MASK1(SIZE_OP,0)))
 #define SET_OPCODE(i,o)	((i) = (((i)&MASK0(SIZE_OP,POS_OP)) | \
 		((cast(Instruction, o)<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
@@ -113,39 +127,39 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
                 ((cast(Instruction, v)<<pos)&MASK1(size,pos))))
 
-// å–å‚æ•°Açš„å€¼,è®¾ç½®å‚æ•°Açš„å€¼
+// È¡²ÎÊıAµÄÖµ,ÉèÖÃ²ÎÊıAµÄÖµ
 #define GETARG_A(i)	getarg(i, POS_A, SIZE_A)
 #define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
-// å–å‚æ•°Bçš„å€¼ï¼Œè®¾ç½®å‚æ•°Bçš„å€¼
+// È¡²ÎÊıBµÄÖµ£¬ÉèÖÃ²ÎÊıBµÄÖµ
 #define GETARG_B(i)	getarg(i, POS_B, SIZE_B)
 #define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
-// å–å‚æ•°Cçš„å€¼ï¼Œè®¾ç½®å‚æ•°Cçš„å€¼
+// È¡²ÎÊıCµÄÖµ£¬ÉèÖÃ²ÎÊıCµÄÖµ
 #define GETARG_C(i)	getarg(i, POS_C, SIZE_C)
 #define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
 
-// å–å‚æ•°Bxçš„å€¼ï¼Œè®¾ç½®å‚æ•°Bxçš„å€¼
+// È¡²ÎÊıBxµÄÖµ£¬ÉèÖÃ²ÎÊıBxµÄÖµ
 #define GETARG_Bx(i)	getarg(i, POS_Bx, SIZE_Bx)
 #define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
 
-// å–å‚æ•°Axçš„å€¼ï¼Œè®¾ç½®å‚æ•°Axçš„å€¼
+// È¡²ÎÊıAxµÄÖµ£¬ÉèÖÃ²ÎÊıAxµÄÖµ
 #define GETARG_Ax(i)	getarg(i, POS_Ax, SIZE_Ax)
 #define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
-// å–å‚æ•°sBxçš„å€¼ï¼Œè®¾ç½®å‚æ•°sBxçš„å€¼
+// È¡²ÎÊısBxµÄÖµ£¬ÉèÖÃ²ÎÊısBxµÄÖµ
 #define GETARG_sBx(i)	(GETARG_Bx(i)-MAXARG_sBx)
 #define SETARG_sBx(i,b)	SETARG_Bx((i),cast(unsigned int, (b)+MAXARG_sBx))
 
-// åˆ›å»ºæŒ‡ä»¤ï¼ŒiABCæ ¼å¼
+// ´´½¨Ö¸Áî£¬iABC¸ñÊ½
 #define CREATE_ABC(o,a,b,c)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, b)<<POS_B) \
 			| (cast(Instruction, c)<<POS_C))
 
-// åˆ›å»ºæŒ‡ä»¤ï¼ŒiABxæ ¼å¼
+// ´´½¨Ö¸Áî£¬iABx¸ñÊ½
 #define CREATE_ABx(o,a,bc)	((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_A) \
 			| (cast(Instruction, bc)<<POS_Bx))
 
-// åˆ›å»ºæŒ‡ä»¤ï¼ŒiAxæ ¼å¼
+// ´´½¨Ö¸Áî£¬iAx¸ñÊ½
 #define CREATE_Ax(o,a)		((cast(Instruction, o)<<POS_OP) \
 			| (cast(Instruction, a)<<POS_Ax))
 
@@ -153,19 +167,19 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 /*
 ** Macros to operate RK indices
 */
-// ç»“åˆèµ·æ¥çœ‹ï¼Œè¿™ä¸ªå®çš„å«ä¹‰å°±å¾ˆç®€å•äº†ï¼šåˆ¤æ–­è¿™ä¸ªæ•°æ®çš„ç¬¬å…«ä½æ˜¯ä¸æ˜¯l ï¼Œå¦‚æœæ˜¯ï¼Œåˆ™è®¤ä¸º
-// åº”è¯¥ä»Kæ•°ç»„ä¸­è·å–æ•°æ®ï¼Œå¦åˆ™å°±æ˜¯ä»å‡½æ•°æˆ˜å¯„å­˜å™¨ä¸­è·å–æ•°æ®ã€‚åé¢ä¼šç»“åˆå…·ä½“çš„æŒ‡ä»¤æ¥è§£é‡Š
-// è¿™ä¸ªæ ¼å¼ã€‚
+// ½áºÏÆğÀ´¿´£¬Õâ¸öºêµÄº¬Òå¾ÍºÜ¼òµ¥ÁË£ºÅĞ¶ÏÕâ¸öÊı¾İµÄµÚ°ËÎ»ÊÇ²»ÊÇl £¬Èç¹ûÊÇ£¬ÔòÈÏÎª
+// Ó¦¸Ã´ÓKÊı×éÖĞ»ñÈ¡Êı¾İ£¬·ñÔò¾ÍÊÇ´Óº¯ÊıÕ½¼Ä´æÆ÷ÖĞ»ñÈ¡Êı¾İ¡£ºóÃæ»á½áºÏ¾ßÌåµÄÖ¸ÁîÀ´½âÊÍ
+// Õâ¸ö¸ñÊ½¡£
 /* this bit 1 means constant (0 means register) */
-// è¯¥ä½ä¸º1è¡¨ç¤ºå¸¸é‡ï¼Œ0è¡¨ç¤ºå¯„å­˜å™¨
+// ¸ÃÎ»Îª1±íÊ¾³£Á¿£¬0±íÊ¾¼Ä´æÆ÷
 #define BITRK		(1 << (SIZE_B - 1))
 
 /* test whether value is a constant */
-// æ˜¯å¦æ˜¯å¸¸é‡
+// ÊÇ·ñÊÇ³£Á¿
 #define ISK(x)		((x) & BITRK)
 
 /* gets the index of the constant */
-// å¾—åˆ°å¸¸é‡çš„ç´¢å¼•
+// µÃµ½³£Á¿µÄË÷Òı
 #define INDEXK(r)	((int)(r) & ~BITRK)
 
 #if !defined(MAXINDEXRK)  /* (for debugging only) */
@@ -173,7 +187,7 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 #endif
 
 /* code a constant index as a RK value */
-// å°†å¸¸é‡ç´¢å¼•ç¼–ç ä¸ºRKå€¼
+// ½«³£Á¿Ë÷Òı±àÂëÎªRKÖµ
 #define RKASK(x)	((x) | BITRK)
 
 
@@ -193,7 +207,7 @@ enum OpMode {iABC, iABx, iAsBx, iAx};  /* basic instruction format */
 /*
 ** grep "ORDER OP" if you change these enums
 */
-// æŒ‡ä»¤æšä¸¾ï¼Œå¦‚æœä¿®æ”¹äº†æšä¸¾çš„ï¼Œæ³¨æ„ä¿®æ”¹â€œORDER OPâ€çš„åœ°æ–¹
+// Ö¸ÁîÃ¶¾Ù£¬Èç¹ûĞŞ¸ÄÁËÃ¶¾ÙµÄ£¬×¢ÒâĞŞ¸Ä¡°ORDER OP¡±µÄµØ·½
 typedef enum {
 /*----------------------------------------------------------------------
 name		args	description
@@ -300,42 +314,42 @@ OP_EXTRAARG		/*	Ax		extra (larger) argument for previous opcode	*/
 ** bit 6: instruction set register A
 ** bit 7: operator is a test (next instruction must be a jump)
 */
-// æŒ‡ä»¤å±æ€§æ©ç ã€‚æ ¼å¼æ˜¯ï¼š
-// 0-1ä½ï¼šæ“ä½œç 
-// 2-3ä½ï¼šCå‚æ•°ç 
-// 4-5ä½ï¼šBå‚æ•°ç 
-// 6ä½ï¼šè¡¨ç¤ºè¿™ä¸ªæŒ‡ä»¤ä¼šä¸ä¼šèµ‹å€¼ç»™å¯„å­˜å™¨Aã€Rï¼ˆAï¼‰ã€‘
-// 7ä½ï¼šè¡¨ç¤ºè¿™æ˜¯ä¸æ˜¯ä¸€æ¡é€»è¾‘æµ‹è¯•ç›¸å…³çš„æŒ‡ä»¤ï¼Œï¼ˆä¸‹ä¸€æ¡æŒ‡ä»¤å¿…é¡»æ˜¯è·³è½¬ï¼‰
+// Ö¸ÁîÊôĞÔÑÚÂë¡£¸ñÊ½ÊÇ£º
+// 0-1Î»£º²Ù×÷Âë
+// 2-3Î»£ºC²ÎÊıÂë
+// 4-5Î»£ºB²ÎÊıÂë
+// 6Î»£º±íÊ¾Õâ¸öÖ¸Áî»á²»»á¸³Öµ¸ø¼Ä´æÆ÷A¡¾R£¨A£©¡¿
+// 7Î»£º±íÊ¾ÕâÊÇ²»ÊÇÒ»ÌõÂß¼­²âÊÔÏà¹ØµÄÖ¸Áî£¬£¨ÏÂÒ»ÌõÖ¸Áî±ØĞëÊÇÌø×ª£©
 
-// Bã€Cå‚æ•°æ ¼å¼
+// B¡¢C²ÎÊı¸ñÊ½
 enum OpArgMask {
-  OpArgN,  // å‚æ•°æœªä½¿ç”¨ /* argument is not used */
-  OpArgU,  // å·²ä½¿ç”¨å‚æ•° /* argument is used */
-  OpArgR,  // è¯¥å‚æ•°æ˜¯å¯„å­˜å™¨æˆ–è·³è½¬åç§» /* argument is a register or a jump offset */
-  OpArgK   // è¯¥å‚æ•°æ˜¯å¸¸é‡è¿˜æ˜¯å¯„å­˜å™¨ /* argument is a constant or register/constant */
+  OpArgN,  // ²ÎÊıÎ´Ê¹ÓÃ /* argument is not used */
+  OpArgU,  // ÒÑÊ¹ÓÃ²ÎÊı /* argument is used */
+  OpArgR,  // ¸Ã²ÎÊıÊÇ¼Ä´æÆ÷»òÌø×ªÆ«ÒÆ /* argument is a register or a jump offset */
+  OpArgK   // ¸Ã²ÎÊıÊÇ³£Á¿»¹ÊÇ¼Ä´æÆ÷ /* argument is a constant or register/constant */
 };
 
 LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
 
-// å¯¹åº”ä¸opmodeçš„å®
-// tï¼šè¡¨ç¤ºè¿™æ˜¯ä¸æ˜¯ä¸€æ¡é€»è¾‘æµ‹è¯•ç›¸å…³çš„æŒ‡ä»¤
-// aï¼šè¡¨ç¤ºè¿™ä¸ªæŒ‡ä»¤ä¼šä¸ä¼šèµ‹å€¼ç»™Rï¼ˆAï¼‰
-// b/cï¼šBã€Cçš„å‚æ•°æ ¼å¼
-// modeï¼šè¿™ä¸ªOpCodeçš„æ ¼å¼
-// ç¬¬7ä½ï¼št
-// ç¬¬6ä½ï¼ša
-// ç¬¬5ä½ï¼Œç¬¬4ä½ï¼ˆ2ä½ï¼š4-5ï¼‰ï¼šb
-// ç¬¬3ä½ï¼Œç¬¬2ä½ï¼ˆ2ä½ï¼š2-3ï¼‰ï¼šc
-// ç¬¬1ä½ï¼Œç¬¬0ä½ï¼ˆ2ä½ï¼š0-1ï¼‰ï¼šm
-// å–2ä½ï¼šç¬¬0-1ä½ï¼Œå¾—åˆ°æ“ä½œç æ¨¡å¼
+// ¶ÔÓ¦ÓëopmodeµÄºê
+// t£º±íÊ¾ÕâÊÇ²»ÊÇÒ»ÌõÂß¼­²âÊÔÏà¹ØµÄÖ¸Áî
+// a£º±íÊ¾Õâ¸öÖ¸Áî»á²»»á¸³Öµ¸øR£¨A£©
+// b/c£ºB¡¢CµÄ²ÎÊı¸ñÊ½
+// mode£ºÕâ¸öOpCodeµÄ¸ñÊ½
+// µÚ7Î»£ºt
+// µÚ6Î»£ºa
+// µÚ5Î»£¬µÚ4Î»£¨2Î»£º4-5£©£ºb
+// µÚ3Î»£¬µÚ2Î»£¨2Î»£º2-3£©£ºc
+// µÚ1Î»£¬µÚ0Î»£¨2Î»£º0-1£©£ºm
+// È¡2Î»£ºµÚ0-1Î»£¬µÃµ½²Ù×÷ÂëÄ£Ê½
 #define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 3))
-// å–2ä½ï¼šç¬¬2-3ä½ï¼Œå¾—åˆ°Bçš„æ¨¡å¼
+// È¡2Î»£ºµÚ2-3Î»£¬µÃµ½BµÄÄ£Ê½
 #define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 4) & 3))
-// å–2ä½ï¼šç¬¬4-5ä½ï¼Œå¾—åˆ°Cçš„æ¨¡å¼
+// È¡2Î»£ºµÚ4-5Î»£¬µÃµ½CµÄÄ£Ê½
 #define getCMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 2) & 3))
-// å–1ä½ï¼Œç¬¬6ä½ï¼Œæ£€æŸ¥Açš„æ¨¡å¼
+// È¡1Î»£¬µÚ6Î»£¬¼ì²éAµÄÄ£Ê½
 #define testAMode(m)	(luaP_opmodes[m] & (1 << 6))
-// å–1ä½ï¼Œç¬¬7ä½ï¼Œæ£€æŸ¥Tçš„æ¨¡å¼
+// È¡1Î»£¬µÚ7Î»£¬¼ì²éTµÄÄ£Ê½
 #define testTMode(m)	(luaP_opmodes[m] & (1 << 7))
 
 

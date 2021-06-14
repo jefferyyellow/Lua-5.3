@@ -802,9 +802,11 @@ void luaV_finishOp (lua_State *L) {
 
 // 从寄存器中取指令也就是在前面以R开头的宏中，实际代码中会使用一个base
 // 再加上对应的地址，如：
+// 寄存器
 #define RA(i)	(base+GETARG_A(i))
 #define RB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgR, base+GETARG_B(i))
 #define RC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgR, base+GETARG_C(i))
+// 寄存器或者常量
 #define RKB(i)	check_exp(getBMode(GET_OPCODE(i)) == OpArgK, \
 	ISK(GETARG_B(i)) ? k+INDEXK(GETARG_B(i)) : base+GETARG_B(i))
 #define RKC(i)	check_exp(getCMode(GET_OPCODE(i)) == OpArgK, \

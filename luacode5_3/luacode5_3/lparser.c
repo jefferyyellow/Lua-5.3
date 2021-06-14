@@ -140,7 +140,7 @@ static TString *str_checkname (LexState *ls) {
   return ts;
 }
 
-
+// 初始化表达式结构
 static void init_exp (expdesc *e, expkind k, int i) {
   e->f = e->t = NO_JUMP;
   e->k = k;
@@ -191,14 +191,15 @@ static void new_localvarliteral_ (LexState *ls, const char *name, size_t sz) {
 #define new_localvarliteral(ls,v) \
 	new_localvarliteral_(ls, "" v, (sizeof(v)/sizeof(char))-1)
 
-
+// 通过索引，得到局部变量
 static LocVar *getlocvar (FuncState *fs, int i) {
+  // 局部变量的索引
   int idx = fs->ls->dyd->actvar.arr[fs->firstlocal + i].idx;
   lua_assert(idx < fs->nlocvars);
   return &fs->f->locvars[idx];
 }
 
-
+// 调整局部变量
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
   fs->nactvar = cast_byte(fs->nactvar + nvars);
@@ -305,7 +306,8 @@ static void singlevar (LexState *ls, expdesc *var) {
   }
 }
 
-
+// 用于根据等号两边变量和表达式的数量来调整赋值。具体来说，
+// 在上面这个例子中，当变量数量多于等号右边的表达式数量时，会将多余的变量置为NIL
 static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
   FuncState *fs = ls->fs;
   int extra = nvars - nexps;
@@ -617,7 +619,9 @@ static void fieldsel (LexState *ls, expdesc *v) {
   luaK_indexed(fs, v, &key);
 }
 
-
+// 解析一个以变量为键的工作在yindex函数中进行，
+// 解析变量形成表达式相关的expdesc 结构体；
+// 根据不同的表达式类型将表达式的值存入寄存器。
 static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
   luaX_next(ls);  /* skip the '[' */
@@ -642,7 +646,7 @@ struct ConsControl {
   int tostore;  /* number of array elements pending to be stored */
 };
 
-
+// 初始化散列部分的代码
 static void recfield (LexState *ls, struct ConsControl *cc) {
   /* recfield -> (NAME | '['exp1']') = exp1 */
   FuncState *fs = ls->fs;
@@ -657,17 +661,29 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
     yindex(ls, &key);
   cc->nh++;
   checknext(ls, '=');
+  // 得到key常量在常量数组中的索引，根据这个值调用luaK_exp2RK函数生成RK值。
   rkkey = luaK_exp2RK(fs, &key);
+  // 得到value表达式的索引
   expr(ls, &val);
+  // 将前两步的值以及表在寄存器中的索引，写入OP_SETTABLE 的参数中。
   luaK_codeABC(fs, OP_SETTABLE, cc->t->u.info, rkkey, luaK_exp2RK(fs, &val));
   fs->freereg = reg;  /* free registers */
 }
 
-
+// 调用closelistfield 。从这个函数的命名可以看出，它做的工作是针对数组部分的
 static void closelistfield (FuncState *fs, struct ConsControl *cc) {
+  // 没有数组元素，直接返回
   if (cc->v.k == VVOID) return;  /* there is no list item */
+  // 调用luaK_exp2nextreg将前面得到的ConsControl结构体中成员v的信息存入寄存器中。
   luaK_exp2nextreg(fs, &cc->v);
   cc->v.k = VVOID;
+  // 如果此时tostore成员的值等于LFIELDS_PER_FLUSH，那么生成一个OP_SETLIST指令，用于
+  // 将当前寄存器上的数据写入表的数组部分。需要注意的是，这个地方存取的数据在栈上
+  // 的位置是紧跟着OP_NEWTABLE指令中的参数A在栈上的位置，而从前面对OP_NEWTABLE 指令
+  // 格式的解释可以知道， OP_NEWTABLE指令的参数A存放的是新创建的表在栈上的位置，这
+  // 样的话使用一个参数既可以得到表的地址，又可以知道待存入的数据是哪些。之所以需
+  // 要限制每次调用OP_SETLIST指令中的数据量不超过LFIELDS_PER_FLUSH，是因为如果不做
+  // 这个限制，会导致数组部分数据过多时，占用过多的寄存器，而Lua栈对寄存器数量是有限制的。
   if (cc->tostore == LFIELDS_PER_FLUSH) {
     luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
     cc->tostore = 0;  /* no more items pending */
@@ -689,7 +705,11 @@ static void lastlistfield (FuncState *fs, struct ConsControl *cc) {
   }
 }
 
-
+// 数组部分的构造
+// 调用expr 函数解析这个表达式，得到对应的ConsControl 结构体中成员V 的数据。前面提
+// 过，这个对象会暂存表构造过程中当前表达式的结果。
+// 检查当前表中数组部分的数据梳理是否超过限制了。
+// 依次将ConsControl结构体中的成员na和tostore加l 。
 static void listfield (LexState *ls, struct ConsControl *cc) {
   /* listfield -> exp */
   expr(ls, &cc->v);
@@ -698,7 +718,10 @@ static void listfield (LexState *ls, struct ConsControl *cc) {
   cc->tostore++;
 }
 
-
+// 
+// 针对具体的字段类型来做解析，主要有如下几种类型。
+// 如果解析到一个变量，那么看紧跟着这个符号的是不是＝，如果不是，就是一个数组
+// 方式的赋值，否则就是散列方式的赋值。
 static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
@@ -709,10 +732,13 @@ static void field (LexState *ls, struct ConsControl *cc) {
         recfield(ls, cc);
       break;
     }
+    // 如果看到的是［符号，就认为这是一个散列部分的构造
     case '[': {
       recfield(ls, cc);
       break;
     }
+    // 否则就是数组部分的构造了。如果是数组部分的构造，那么进入的是listfield 函
+	// 数，否则就是recf ield 函数了
     default: {
       listfield(ls, cc);
       break;
@@ -726,22 +752,38 @@ static void constructor (LexState *ls, expdesc *t) {
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
+  // 生成一条OP_NEWTABLE指令。注意，在前面关于这个指令的说明中，这条指令
+  // 创建的表最终会根据指令中的参数A存储的寄存器地址，赋值给本函数栈内的寄存器，
+  // 所以很显然这条指令是需要重定向的，所以就要下面VRELOCABLE的重定向的语句
   int pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
   struct ConsControl cc;
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
+  // 初始化重定位
   init_exp(t, VRELOCABLE, pc);
+  // 将ConsControl结构体中的对象v初始化为VVOID
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
+  // 将寄存器地址修正为前面创建的OP_NEWTABLE指令的参数A 。
   luaK_exp2nextreg(ls->fs, t);  /* fix it at stack top */
   checknext(ls, '{');
+  // 遍历表中的部分
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
+    // 如果是结束行，跳出
     if (ls->t.token == '}') break;
+	// 调用closelistfield函数生成上一个表达式的相关指令。容易想到，这肯定会
+	// 调用luaK_exp2nextreg函数。注意上面提到过，最开始初始化ConsControl表达式时，其
+	// 成员变量v的表达式类型是VVOID ，因此这种情况下进入这个函数并不会有什么效果，这
+	// 就把循环和前面的初始化语句衔接在了一起。
     closelistfield(fs, &cc);
+    // 处理字段
     field(ls, &cc);
+    // 找下一个字段
   } while (testnext(ls, ',') || testnext(ls, ';'));
   check_match(ls, '}', '{', line);
   lastlistfield(fs, &cc);
+  // 将ConsControl结构体中存放的散列和数组部分的大小，写入前面生成的
+  // OP_NEWTABLE指令的B和C部分。
   SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
   SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
 }
@@ -802,7 +844,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   close_func(ls);
 }
 
-
+// 解析表达式列表
 static int explist (LexState *ls, expdesc *v) {
   /* explist -> expr { ',' expr } */
   int n = 1;  /* at least one expression */
@@ -929,7 +971,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
   }
 }
 
-
+// 简单的表达式
 static void simpleexp (LexState *ls, expdesc *v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
@@ -1440,7 +1482,7 @@ static void localfunc (LexState *ls) {
   getlocvar(fs, b.u.info)->startpc = fs->pc;
 }
 
-
+// 局部变量
 static void localstat (LexState *ls) {
   /* stat -> LOCAL NAME {',' NAME} ['=' explist] */
   int nvars = 0;
@@ -1456,7 +1498,11 @@ static void localstat (LexState *ls) {
     e.k = VVOID;
     nexps = 0;
   }
+  // 用于根据等号两边变量和表达式的数量来调整赋值。具体来说，
+  // 在上面这个例子中，当变量数量多于等号右边的表达式数量时，会将多余的变量置为NIL
   adjust_assign(ls, nvars, nexps, &e);
+  // 会根据变量的数量调整FuncState结构体中记录局部变量数量的
+  // nactvar对象，并记录这些局部变量的startpc值。
   adjustlocalvars(ls, nvars);
 }
 

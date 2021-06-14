@@ -45,8 +45,11 @@ void luaT_init (lua_State *L) {
     "__concat", "__call"
   };
   int i;
+  // 全局名字
   for (i=0; i<TM_N; i++) {
+    // 创建字符串
     G(L)->tmname[i] = luaS_new(L, luaT_eventname[i]);
+    // 从不回收这些名字
     luaC_fix(L, obj2gco(G(L)->tmname[i]));  /* never collect these names */
   }
 }
@@ -69,6 +72,7 @@ const TValue *luaT_gettm (Table *events, TMS event, TString *ename) {
 }
 
 // 得到元表
+// 根据一个数据的类型返回它的元表
 const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
   Table *mt;
   switch (ttnov(o)) {
