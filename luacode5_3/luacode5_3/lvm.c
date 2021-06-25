@@ -196,12 +196,12 @@ void luaV_finishget (lua_State *L, const TValue *t, TValue *key, StkId val,
       }
       /* else will try the metamethod */
     }
-	// 如果是一个函数，就调用
+	// 如果是一个函数，就调用，表示是一个元方法
     if (ttisfunction(tm)) {  /* is metamethod a function? */
       luaT_callTM(L, tm, t, key, val, 1);  /* call it */
       return;
     }
-	// 元方法还有元方法，可以嵌套很多层，所以这是个循环去，最多MAXTAGLOOP
+	// 元表还有元表，可以嵌套很多层，所以这是个循环去，最多MAXTAGLOOP
     t = tm;  /* else try to access 'tm[key]' */
     if (luaV_fastget(L,t,key,slot,luaH_get)) {  /* fast track? */
       setobj2s(L, val, slot);  /* done */

@@ -140,7 +140,7 @@ static TString *str_checkname (LexState *ls) {
   return ts;
 }
 
-// ³õÊ¼»¯±í´ïÊ½½á¹¹
+// åˆå§‹åŒ–è¡¨è¾¾å¼ç»“æž„
 static void init_exp (expdesc *e, expkind k, int i) {
   e->f = e->t = NO_JUMP;
   e->k = k;
@@ -191,15 +191,15 @@ static void new_localvarliteral_ (LexState *ls, const char *name, size_t sz) {
 #define new_localvarliteral(ls,v) \
 	new_localvarliteral_(ls, "" v, (sizeof(v)/sizeof(char))-1)
 
-// Í¨¹ýË÷Òý£¬µÃµ½¾Ö²¿±äÁ¿
+// é€šè¿‡ç´¢å¼•ï¼Œå¾—åˆ°å±€éƒ¨å˜é‡
 static LocVar *getlocvar (FuncState *fs, int i) {
-  // ¾Ö²¿±äÁ¿µÄË÷Òý
+  // å±€éƒ¨å˜é‡çš„ç´¢å¼•
   int idx = fs->ls->dyd->actvar.arr[fs->firstlocal + i].idx;
   lua_assert(idx < fs->nlocvars);
   return &fs->f->locvars[idx];
 }
 
-// µ÷Õû¾Ö²¿±äÁ¿
+// è°ƒæ•´å±€éƒ¨å˜é‡
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
   fs->nactvar = cast_byte(fs->nactvar + nvars);
@@ -306,8 +306,8 @@ static void singlevar (LexState *ls, expdesc *var) {
   }
 }
 
-// ÓÃÓÚ¸ù¾ÝµÈºÅÁ½±ß±äÁ¿ºÍ±í´ïÊ½µÄÊýÁ¿À´µ÷Õû¸³Öµ¡£¾ßÌåÀ´Ëµ£¬
-// ÔÚÉÏÃæÕâ¸öÀý×ÓÖÐ£¬µ±±äÁ¿ÊýÁ¿¶àÓÚµÈºÅÓÒ±ßµÄ±í´ïÊ½ÊýÁ¿Ê±£¬»á½«¶àÓàµÄ±äÁ¿ÖÃÎªNIL
+// ç”¨äºŽæ ¹æ®ç­‰å·ä¸¤è¾¹å˜é‡å’Œè¡¨è¾¾å¼çš„æ•°é‡æ¥è°ƒæ•´èµ‹å€¼ã€‚å…·ä½“æ¥è¯´ï¼Œ
+// åœ¨ä¸Šé¢è¿™ä¸ªä¾‹å­ä¸­ï¼Œå½“å˜é‡æ•°é‡å¤šäºŽç­‰å·å³è¾¹çš„è¡¨è¾¾å¼æ•°é‡æ—¶ï¼Œä¼šå°†å¤šä½™çš„å˜é‡ç½®ä¸ºNIL
 static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
   FuncState *fs = ls->fs;
   int extra = nvars - nexps;
@@ -619,9 +619,9 @@ static void fieldsel (LexState *ls, expdesc *v) {
   luaK_indexed(fs, v, &key);
 }
 
-// ½âÎöÒ»¸öÒÔ±äÁ¿Îª¼üµÄ¹¤×÷ÔÚyindexº¯ÊýÖÐ½øÐÐ£¬
-// ½âÎö±äÁ¿ÐÎ³É±í´ïÊ½Ïà¹ØµÄexpdesc ½á¹¹Ìå£»
-// ¸ù¾Ý²»Í¬µÄ±í´ïÊ½ÀàÐÍ½«±í´ïÊ½µÄÖµ´æÈë¼Ä´æÆ÷¡£
+// è§£æžä¸€ä¸ªä»¥å˜é‡ä¸ºé”®çš„å·¥ä½œåœ¨yindexå‡½æ•°ä¸­è¿›è¡Œï¼Œ
+// è§£æžå˜é‡å½¢æˆè¡¨è¾¾å¼ç›¸å…³çš„expdesc ç»“æž„ä½“ï¼›
+// æ ¹æ®ä¸åŒçš„è¡¨è¾¾å¼ç±»åž‹å°†è¡¨è¾¾å¼çš„å€¼å­˜å…¥å¯„å­˜å™¨ã€‚
 static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
   luaX_next(ls);  /* skip the '[' */
@@ -646,44 +646,46 @@ struct ConsControl {
   int tostore;  /* number of array elements pending to be stored */
 };
 
-// ³õÊ¼»¯É¢ÁÐ²¿·ÖµÄ´úÂë
+// åˆå§‹åŒ–æ•£åˆ—éƒ¨åˆ†çš„ä»£ç 
 static void recfield (LexState *ls, struct ConsControl *cc) {
   /* recfield -> (NAME | '['exp1']') = exp1 */
   FuncState *fs = ls->fs;
   int reg = ls->fs->freereg;
   expdesc key, val;
   int rkkey;
+  // å¸¸é‡ä¸ºé”®å€¼
   if (ls->t.token == TK_NAME) {
     checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
     checkname(ls, &key);
   }
   else  /* ls->t.token == '[' */
+    // å˜é‡ä¸ºé”®å€¼
     yindex(ls, &key);
   cc->nh++;
   checknext(ls, '=');
-  // µÃµ½key³£Á¿ÔÚ³£Á¿Êý×éÖÐµÄË÷Òý£¬¸ù¾ÝÕâ¸öÖµµ÷ÓÃluaK_exp2RKº¯ÊýÉú³ÉRKÖµ¡£
+  // å¾—åˆ°keyå¸¸é‡åœ¨å¸¸é‡æ•°ç»„ä¸­çš„ç´¢å¼•ï¼Œæ ¹æ®è¿™ä¸ªå€¼è°ƒç”¨luaK_exp2RKå‡½æ•°ç”ŸæˆRKå€¼ã€‚
   rkkey = luaK_exp2RK(fs, &key);
-  // µÃµ½value±í´ïÊ½µÄË÷Òý
+  // å¾—åˆ°valueè¡¨è¾¾å¼çš„ç´¢å¼•
   expr(ls, &val);
-  // ½«Ç°Á½²½µÄÖµÒÔ¼°±íÔÚ¼Ä´æÆ÷ÖÐµÄË÷Òý£¬Ð´ÈëOP_SETTABLE µÄ²ÎÊýÖÐ¡£
+  // å°†å‰ä¸¤æ­¥çš„å€¼ä»¥åŠè¡¨åœ¨å¯„å­˜å™¨ä¸­çš„ç´¢å¼•ï¼Œå†™å…¥OP_SETTABLE çš„å‚æ•°ä¸­ã€‚
   luaK_codeABC(fs, OP_SETTABLE, cc->t->u.info, rkkey, luaK_exp2RK(fs, &val));
   fs->freereg = reg;  /* free registers */
 }
 
-// µ÷ÓÃcloselistfield ¡£´ÓÕâ¸öº¯ÊýµÄÃüÃû¿ÉÒÔ¿´³ö£¬Ëü×öµÄ¹¤×÷ÊÇÕë¶ÔÊý×é²¿·ÖµÄ
+// è°ƒç”¨closelistfield ã€‚ä»Žè¿™ä¸ªå‡½æ•°çš„å‘½åå¯ä»¥çœ‹å‡ºï¼Œå®ƒåšçš„å·¥ä½œæ˜¯é’ˆå¯¹æ•°ç»„éƒ¨åˆ†çš„
 static void closelistfield (FuncState *fs, struct ConsControl *cc) {
-  // Ã»ÓÐÊý×éÔªËØ£¬Ö±½Ó·µ»Ø
+  // æ²¡æœ‰æ•°ç»„å…ƒç´ ï¼Œç›´æŽ¥è¿”å›ž
   if (cc->v.k == VVOID) return;  /* there is no list item */
-  // µ÷ÓÃluaK_exp2nextreg½«Ç°ÃæµÃµ½µÄConsControl½á¹¹ÌåÖÐ³ÉÔ±vµÄÐÅÏ¢´æÈë¼Ä´æÆ÷ÖÐ¡£
+  // è°ƒç”¨luaK_exp2nextregå°†å‰é¢å¾—åˆ°çš„ConsControlç»“æž„ä½“ä¸­æˆå‘˜vçš„ä¿¡æ¯å­˜å…¥å¯„å­˜å™¨ä¸­ã€‚
   luaK_exp2nextreg(fs, &cc->v);
   cc->v.k = VVOID;
-  // Èç¹û´ËÊ±tostore³ÉÔ±µÄÖµµÈÓÚLFIELDS_PER_FLUSH£¬ÄÇÃ´Éú³ÉÒ»¸öOP_SETLISTÖ¸Áî£¬ÓÃÓÚ
-  // ½«µ±Ç°¼Ä´æÆ÷ÉÏµÄÊý¾ÝÐ´Èë±íµÄÊý×é²¿·Ö¡£ÐèÒª×¢ÒâµÄÊÇ£¬Õâ¸öµØ·½´æÈ¡µÄÊý¾ÝÔÚÕ»ÉÏ
-  // µÄÎ»ÖÃÊÇ½ô¸ú×ÅOP_NEWTABLEÖ¸ÁîÖÐµÄ²ÎÊýAÔÚÕ»ÉÏµÄÎ»ÖÃ£¬¶ø´ÓÇ°Ãæ¶ÔOP_NEWTABLE Ö¸Áî
-  // ¸ñÊ½µÄ½âÊÍ¿ÉÒÔÖªµÀ£¬ OP_NEWTABLEÖ¸ÁîµÄ²ÎÊýA´æ·ÅµÄÊÇÐÂ´´½¨µÄ±íÔÚÕ»ÉÏµÄÎ»ÖÃ£¬Õâ
-  // ÑùµÄ»°Ê¹ÓÃÒ»¸ö²ÎÊý¼È¿ÉÒÔµÃµ½±íµÄµØÖ·£¬ÓÖ¿ÉÒÔÖªµÀ´ý´æÈëµÄÊý¾ÝÊÇÄÄÐ©¡£Ö®ËùÒÔÐè
-  // ÒªÏÞÖÆÃ¿´Îµ÷ÓÃOP_SETLISTÖ¸ÁîÖÐµÄÊý¾ÝÁ¿²»³¬¹ýLFIELDS_PER_FLUSH£¬ÊÇÒòÎªÈç¹û²»×ö
-  // Õâ¸öÏÞÖÆ£¬»áµ¼ÖÂÊý×é²¿·ÖÊý¾Ý¹ý¶àÊ±£¬Õ¼ÓÃ¹ý¶àµÄ¼Ä´æÆ÷£¬¶øLuaÕ»¶Ô¼Ä´æÆ÷ÊýÁ¿ÊÇÓÐÏÞÖÆµÄ¡£
+  // å¦‚æžœæ­¤æ—¶tostoreæˆå‘˜çš„å€¼ç­‰äºŽLFIELDS_PER_FLUSHï¼Œé‚£ä¹ˆç”Ÿæˆä¸€ä¸ªOP_SETLISTæŒ‡ä»¤ï¼Œç”¨äºŽ
+  // å°†å½“å‰å¯„å­˜å™¨ä¸Šçš„æ•°æ®å†™å…¥è¡¨çš„æ•°ç»„éƒ¨åˆ†ã€‚éœ€è¦æ³¨æ„çš„æ˜¯ï¼Œè¿™ä¸ªåœ°æ–¹å­˜å–çš„æ•°æ®åœ¨æ ˆä¸Š
+  // çš„ä½ç½®æ˜¯ç´§è·Ÿç€OP_NEWTABLEæŒ‡ä»¤ä¸­çš„å‚æ•°Aåœ¨æ ˆä¸Šçš„ä½ç½®ï¼Œè€Œä»Žå‰é¢å¯¹OP_NEWTABLE æŒ‡ä»¤
+  // æ ¼å¼çš„è§£é‡Šå¯ä»¥çŸ¥é“ï¼Œ OP_NEWTABLEæŒ‡ä»¤çš„å‚æ•°Aå­˜æ”¾çš„æ˜¯æ–°åˆ›å»ºçš„è¡¨åœ¨æ ˆä¸Šçš„ä½ç½®ï¼Œè¿™
+  // æ ·çš„è¯ä½¿ç”¨ä¸€ä¸ªå‚æ•°æ—¢å¯ä»¥å¾—åˆ°è¡¨çš„åœ°å€ï¼Œåˆå¯ä»¥çŸ¥é“å¾…å­˜å…¥çš„æ•°æ®æ˜¯å“ªäº›ã€‚ä¹‹æ‰€ä»¥éœ€
+  // è¦é™åˆ¶æ¯æ¬¡è°ƒç”¨OP_SETLISTæŒ‡ä»¤ä¸­çš„æ•°æ®é‡ä¸è¶…è¿‡LFIELDS_PER_FLUSHï¼Œæ˜¯å› ä¸ºå¦‚æžœä¸åš
+  // è¿™ä¸ªé™åˆ¶ï¼Œä¼šå¯¼è‡´æ•°ç»„éƒ¨åˆ†æ•°æ®è¿‡å¤šæ—¶ï¼Œå ç”¨è¿‡å¤šçš„å¯„å­˜å™¨ï¼Œè€ŒLuaæ ˆå¯¹å¯„å­˜å™¨æ•°é‡æ˜¯æœ‰é™åˆ¶çš„ã€‚
   if (cc->tostore == LFIELDS_PER_FLUSH) {
     luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
     cc->tostore = 0;  /* no more items pending */
@@ -705,11 +707,11 @@ static void lastlistfield (FuncState *fs, struct ConsControl *cc) {
   }
 }
 
-// Êý×é²¿·ÖµÄ¹¹Ôì
-// µ÷ÓÃexpr º¯Êý½âÎöÕâ¸ö±í´ïÊ½£¬µÃµ½¶ÔÓ¦µÄConsControl ½á¹¹ÌåÖÐ³ÉÔ±V µÄÊý¾Ý¡£Ç°ÃæÌá
-// ¹ý£¬Õâ¸ö¶ÔÏó»áÔÝ´æ±í¹¹Ôì¹ý³ÌÖÐµ±Ç°±í´ïÊ½µÄ½á¹û¡£
-// ¼ì²éµ±Ç°±íÖÐÊý×é²¿·ÖµÄÊý¾ÝÊáÀíÊÇ·ñ³¬¹ýÏÞÖÆÁË¡£
-// ÒÀ´Î½«ConsControl½á¹¹ÌåÖÐµÄ³ÉÔ±naºÍtostore¼Ól ¡£
+// æ•°ç»„éƒ¨åˆ†çš„æž„é€ 
+// è°ƒç”¨expr å‡½æ•°è§£æžè¿™ä¸ªè¡¨è¾¾å¼ï¼Œå¾—åˆ°å¯¹åº”çš„ConsControl ç»“æž„ä½“ä¸­æˆå‘˜V çš„æ•°æ®ã€‚å‰é¢æ
+// è¿‡ï¼Œè¿™ä¸ªå¯¹è±¡ä¼šæš‚å­˜è¡¨æž„é€ è¿‡ç¨‹ä¸­å½“å‰è¡¨è¾¾å¼çš„ç»“æžœã€‚
+// æ£€æŸ¥å½“å‰è¡¨ä¸­æ•°ç»„éƒ¨åˆ†çš„æ•°æ®æ¢³ç†æ˜¯å¦è¶…è¿‡é™åˆ¶äº†ã€‚
+// ä¾æ¬¡å°†ConsControlç»“æž„ä½“ä¸­çš„æˆå‘˜naå’ŒtostoreåŠ l ã€‚
 static void listfield (LexState *ls, struct ConsControl *cc) {
   /* listfield -> exp */
   expr(ls, &cc->v);
@@ -719,9 +721,9 @@ static void listfield (LexState *ls, struct ConsControl *cc) {
 }
 
 // 
-// Õë¶Ô¾ßÌåµÄ×Ö¶ÎÀàÐÍÀ´×ö½âÎö£¬Ö÷ÒªÓÐÈçÏÂ¼¸ÖÖÀàÐÍ¡£
-// Èç¹û½âÎöµ½Ò»¸ö±äÁ¿£¬ÄÇÃ´¿´½ô¸ú×ÅÕâ¸ö·ûºÅµÄÊÇ²»ÊÇ£½£¬Èç¹û²»ÊÇ£¬¾ÍÊÇÒ»¸öÊý×é
-// ·½Ê½µÄ¸³Öµ£¬·ñÔò¾ÍÊÇÉ¢ÁÐ·½Ê½µÄ¸³Öµ¡£
+// é’ˆå¯¹å…·ä½“çš„å­—æ®µç±»åž‹æ¥åšè§£æžï¼Œä¸»è¦æœ‰å¦‚ä¸‹å‡ ç§ç±»åž‹ã€‚
+// å¦‚æžœè§£æžåˆ°ä¸€ä¸ªå˜é‡ï¼Œé‚£ä¹ˆçœ‹ç´§è·Ÿç€è¿™ä¸ªç¬¦å·çš„æ˜¯ä¸æ˜¯ï¼ï¼Œå¦‚æžœä¸æ˜¯ï¼Œå°±æ˜¯ä¸€ä¸ªæ•°ç»„
+// æ–¹å¼çš„èµ‹å€¼ï¼Œå¦åˆ™å°±æ˜¯æ•£åˆ—æ–¹å¼çš„èµ‹å€¼ã€‚
 static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
@@ -732,13 +734,13 @@ static void field (LexState *ls, struct ConsControl *cc) {
         recfield(ls, cc);
       break;
     }
-    // Èç¹û¿´µ½µÄÊÇ£Û·ûºÅ£¬¾ÍÈÏÎªÕâÊÇÒ»¸öÉ¢ÁÐ²¿·ÖµÄ¹¹Ôì
+    // å¦‚æžœçœ‹åˆ°çš„æ˜¯ï¼»ç¬¦å·ï¼Œå°±è®¤ä¸ºè¿™æ˜¯ä¸€ä¸ªæ•£åˆ—éƒ¨åˆ†çš„æž„é€ 
     case '[': {
       recfield(ls, cc);
       break;
     }
-    // ·ñÔò¾ÍÊÇÊý×é²¿·ÖµÄ¹¹ÔìÁË¡£Èç¹ûÊÇÊý×é²¿·ÖµÄ¹¹Ôì£¬ÄÇÃ´½øÈëµÄÊÇlistfield º¯
-	// Êý£¬·ñÔò¾ÍÊÇrecf ield º¯ÊýÁË
+    // å¦åˆ™å°±æ˜¯æ•°ç»„éƒ¨åˆ†çš„æž„é€ äº†ã€‚å¦‚æžœæ˜¯æ•°ç»„éƒ¨åˆ†çš„æž„é€ ï¼Œé‚£ä¹ˆè¿›å…¥çš„æ˜¯listfield å‡½
+	// æ•°ï¼Œå¦åˆ™å°±æ˜¯recf ield å‡½æ•°äº†
     default: {
       listfield(ls, cc);
       break;
@@ -752,38 +754,38 @@ static void constructor (LexState *ls, expdesc *t) {
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
-  // Éú³ÉÒ»ÌõOP_NEWTABLEÖ¸Áî¡£×¢Òâ£¬ÔÚÇ°Ãæ¹ØÓÚÕâ¸öÖ¸ÁîµÄËµÃ÷ÖÐ£¬ÕâÌõÖ¸Áî
-  // ´´½¨µÄ±í×îÖÕ»á¸ù¾ÝÖ¸ÁîÖÐµÄ²ÎÊýA´æ´¢µÄ¼Ä´æÆ÷µØÖ·£¬¸³Öµ¸ø±¾º¯ÊýÕ»ÄÚµÄ¼Ä´æÆ÷£¬
-  // ËùÒÔºÜÏÔÈ»ÕâÌõÖ¸ÁîÊÇÐèÒªÖØ¶¨ÏòµÄ£¬ËùÒÔ¾ÍÒªÏÂÃæVRELOCABLEµÄÖØ¶¨ÏòµÄÓï¾ä
+  // ç”Ÿæˆä¸€æ¡OP_NEWTABLEæŒ‡ä»¤ã€‚æ³¨æ„ï¼Œåœ¨å‰é¢å…³äºŽè¿™ä¸ªæŒ‡ä»¤çš„è¯´æ˜Žä¸­ï¼Œè¿™æ¡æŒ‡ä»¤
+  // åˆ›å»ºçš„è¡¨æœ€ç»ˆä¼šæ ¹æ®æŒ‡ä»¤ä¸­çš„å‚æ•°Aå­˜å‚¨çš„å¯„å­˜å™¨åœ°å€ï¼Œèµ‹å€¼ç»™æœ¬å‡½æ•°æ ˆå†…çš„å¯„å­˜å™¨ï¼Œ
+  // æ‰€ä»¥å¾ˆæ˜¾ç„¶è¿™æ¡æŒ‡ä»¤æ˜¯éœ€è¦é‡å®šå‘çš„ï¼Œæ‰€ä»¥å°±è¦ä¸‹é¢VRELOCABLEçš„é‡å®šå‘çš„è¯­å¥
   int pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
   struct ConsControl cc;
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
-  // ³õÊ¼»¯ÖØ¶¨Î»
+  // åˆå§‹åŒ–é‡å®šä½
   init_exp(t, VRELOCABLE, pc);
-  // ½«ConsControl½á¹¹ÌåÖÐµÄ¶ÔÏóv³õÊ¼»¯ÎªVVOID
+  // å°†ConsControlç»“æž„ä½“ä¸­çš„å¯¹è±¡våˆå§‹åŒ–ä¸ºVVOID
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
-  // ½«¼Ä´æÆ÷µØÖ·ÐÞÕýÎªÇ°Ãæ´´½¨µÄOP_NEWTABLEÖ¸ÁîµÄ²ÎÊýA ¡£
+  // å°†å¯„å­˜å™¨åœ°å€ä¿®æ­£ä¸ºå‰é¢åˆ›å»ºçš„OP_NEWTABLEæŒ‡ä»¤çš„å‚æ•°A ã€‚
   luaK_exp2nextreg(ls->fs, t);  /* fix it at stack top */
   checknext(ls, '{');
-  // ±éÀú±íÖÐµÄ²¿·Ö
+  // éåŽ†è¡¨ä¸­çš„éƒ¨åˆ†
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
-    // Èç¹ûÊÇ½áÊøÐÐ£¬Ìø³ö
+    // å¦‚æžœæ˜¯ç»“æŸè¡Œï¼Œè·³å‡º
     if (ls->t.token == '}') break;
-	// µ÷ÓÃcloselistfieldº¯ÊýÉú³ÉÉÏÒ»¸ö±í´ïÊ½µÄÏà¹ØÖ¸Áî¡£ÈÝÒ×Ïëµ½£¬Õâ¿Ï¶¨»á
-	// µ÷ÓÃluaK_exp2nextregº¯Êý¡£×¢ÒâÉÏÃæÌáµ½¹ý£¬×î¿ªÊ¼³õÊ¼»¯ConsControl±í´ïÊ½Ê±£¬Æä
-	// ³ÉÔ±±äÁ¿vµÄ±í´ïÊ½ÀàÐÍÊÇVVOID £¬Òò´ËÕâÖÖÇé¿öÏÂ½øÈëÕâ¸öº¯Êý²¢²»»áÓÐÊ²Ã´Ð§¹û£¬Õâ
-	// ¾Í°ÑÑ­»·ºÍÇ°ÃæµÄ³õÊ¼»¯Óï¾äÏÎ½ÓÔÚÁËÒ»Æð¡£
+	// è°ƒç”¨closelistfieldå‡½æ•°ç”Ÿæˆä¸Šä¸€ä¸ªè¡¨è¾¾å¼çš„ç›¸å…³æŒ‡ä»¤ã€‚å®¹æ˜“æƒ³åˆ°ï¼Œè¿™è‚¯å®šä¼š
+	// è°ƒç”¨luaK_exp2nextregå‡½æ•°ã€‚æ³¨æ„ä¸Šé¢æåˆ°è¿‡ï¼Œæœ€å¼€å§‹åˆå§‹åŒ–ConsControlè¡¨è¾¾å¼æ—¶ï¼Œå…¶
+	// æˆå‘˜å˜é‡vçš„è¡¨è¾¾å¼ç±»åž‹æ˜¯VVOID ï¼Œå› æ­¤è¿™ç§æƒ…å†µä¸‹è¿›å…¥è¿™ä¸ªå‡½æ•°å¹¶ä¸ä¼šæœ‰ä»€ä¹ˆæ•ˆæžœï¼Œè¿™
+	// å°±æŠŠå¾ªçŽ¯å’Œå‰é¢çš„åˆå§‹åŒ–è¯­å¥è¡”æŽ¥åœ¨äº†ä¸€èµ·ã€‚
     closelistfield(fs, &cc);
-    // ´¦Àí×Ö¶Î
+    // å¤„ç†å­—æ®µ
     field(ls, &cc);
-    // ÕÒÏÂÒ»¸ö×Ö¶Î
+    // æ‰¾ä¸‹ä¸€ä¸ªå­—æ®µ
   } while (testnext(ls, ',') || testnext(ls, ';'));
   check_match(ls, '}', '{', line);
   lastlistfield(fs, &cc);
-  // ½«ConsControl½á¹¹ÌåÖÐ´æ·ÅµÄÉ¢ÁÐºÍÊý×é²¿·ÖµÄ´óÐ¡£¬Ð´ÈëÇ°ÃæÉú³ÉµÄ
-  // OP_NEWTABLEÖ¸ÁîµÄBºÍC²¿·Ö¡£
+  // å°†ConsControlç»“æž„ä½“ä¸­å­˜æ”¾çš„æ•£åˆ—å’Œæ•°ç»„éƒ¨åˆ†çš„å¤§å°ï¼Œå†™å…¥å‰é¢ç”Ÿæˆçš„
+  // OP_NEWTABLEæŒ‡ä»¤çš„Bå’ŒCéƒ¨åˆ†ã€‚
   SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
   SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
 }
@@ -806,10 +808,10 @@ static void parlist (LexState *ls) {
           nparams++;
           break;
         }
-        // ²ÎÊýÖÐÓÐ ...±íÊ¾¿É±ä²ÎÊý
+        // å‚æ•°ä¸­æœ‰ ...è¡¨ç¤ºå¯å˜å‚æ•°
         case TK_DOTS: {  /* param -> '...' */
           luaX_next(ls);
-          // ÉèÖÃÎª¿É±ä²ÎÊý
+          // è®¾ç½®ä¸ºå¯å˜å‚æ•°
           f->is_vararg = 1;  /* declared vararg */
           break;
         }
@@ -844,7 +846,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   close_func(ls);
 }
 
-// ½âÎö±í´ïÊ½ÁÐ±í
+// è§£æžè¡¨è¾¾å¼åˆ—è¡¨
 static int explist (LexState *ls, expdesc *v) {
   /* explist -> expr { ',' expr } */
   int n = 1;  /* at least one expression */
@@ -971,7 +973,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
   }
 }
 
-// ¼òµ¥µÄ±í´ïÊ½
+// ç®€å•çš„è¡¨è¾¾å¼
 static void simpleexp (LexState *ls, expdesc *v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
@@ -1482,7 +1484,7 @@ static void localfunc (LexState *ls) {
   getlocvar(fs, b.u.info)->startpc = fs->pc;
 }
 
-// ¾Ö²¿±äÁ¿
+// å±€éƒ¨å˜é‡
 static void localstat (LexState *ls) {
   /* stat -> LOCAL NAME {',' NAME} ['=' explist] */
   int nvars = 0;
@@ -1498,11 +1500,11 @@ static void localstat (LexState *ls) {
     e.k = VVOID;
     nexps = 0;
   }
-  // ÓÃÓÚ¸ù¾ÝµÈºÅÁ½±ß±äÁ¿ºÍ±í´ïÊ½µÄÊýÁ¿À´µ÷Õû¸³Öµ¡£¾ßÌåÀ´Ëµ£¬
-  // ÔÚÉÏÃæÕâ¸öÀý×ÓÖÐ£¬µ±±äÁ¿ÊýÁ¿¶àÓÚµÈºÅÓÒ±ßµÄ±í´ïÊ½ÊýÁ¿Ê±£¬»á½«¶àÓàµÄ±äÁ¿ÖÃÎªNIL
+  // ç”¨äºŽæ ¹æ®ç­‰å·ä¸¤è¾¹å˜é‡å’Œè¡¨è¾¾å¼çš„æ•°é‡æ¥è°ƒæ•´èµ‹å€¼ã€‚å…·ä½“æ¥è¯´ï¼Œ
+  // åœ¨ä¸Šé¢è¿™ä¸ªä¾‹å­ä¸­ï¼Œå½“å˜é‡æ•°é‡å¤šäºŽç­‰å·å³è¾¹çš„è¡¨è¾¾å¼æ•°é‡æ—¶ï¼Œä¼šå°†å¤šä½™çš„å˜é‡ç½®ä¸ºNIL
   adjust_assign(ls, nvars, nexps, &e);
-  // »á¸ù¾Ý±äÁ¿µÄÊýÁ¿µ÷ÕûFuncState½á¹¹ÌåÖÐ¼ÇÂ¼¾Ö²¿±äÁ¿ÊýÁ¿µÄ
-  // nactvar¶ÔÏó£¬²¢¼ÇÂ¼ÕâÐ©¾Ö²¿±äÁ¿µÄstartpcÖµ¡£
+  // ä¼šæ ¹æ®å˜é‡çš„æ•°é‡è°ƒæ•´FuncStateç»“æž„ä½“ä¸­è®°å½•å±€éƒ¨å˜é‡æ•°é‡çš„
+  // nactvarå¯¹è±¡ï¼Œå¹¶è®°å½•è¿™äº›å±€éƒ¨å˜é‡çš„startpcå€¼ã€‚
   adjustlocalvars(ls, nvars);
 }
 
@@ -1661,7 +1663,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
   open_func(ls, fs, &bl);
-  // Ö÷º¯Êý×ÜÊÇ±»¶¨ÒåÎ»¿É±ä²ÎÊýµÄº¯Êý
+  // ä¸»å‡½æ•°æ€»æ˜¯è¢«å®šä¹‰ä½å¯å˜å‚æ•°çš„å‡½æ•°
   fs->f->is_vararg = 1;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
@@ -1677,7 +1679,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   LexState lexstate;
   FuncState funcstate;
   LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
-  // ½«clÉèÖÃÔÚÕ»¶¥
+  // å°†clè®¾ç½®åœ¨æ ˆé¡¶
   setclLvalue(L, L->top, cl);  /* anchor it (to avoid being collected) */
   luaD_inctop(L);
   lexstate.h = luaH_new(L);  /* create table for scanner */

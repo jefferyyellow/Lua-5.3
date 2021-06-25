@@ -44,10 +44,10 @@ typedef enum {
 } TMS;
 
 
-// ÏÈ¼ì²éflags£¬Èç¹ûflags±»ÖÃÎ»£¬±íÊ¾Ã»ÓĞ¸ÃÔª·½·¨£¬Ö±½Ó·µ»ØNULL£¬·ñÔòµ÷ÓÃluaT_gettm
+// å…ˆæ£€æŸ¥flagsï¼Œå¦‚æœflagsè¢«ç½®ä½ï¼Œè¡¨ç¤ºæ²¡æœ‰è¯¥å…ƒæ–¹æ³•ï¼Œç›´æ¥è¿”å›NULLï¼Œå¦åˆ™è°ƒç”¨luaT_gettm
 #define gfasttm(g,et,e) ((et) == NULL ? NULL : \
   ((et)->flags & (1u<<(e))) ? NULL : luaT_gettm(et, e, (g)->tmname[e]))
-
+// fasttmå®çš„ä½œç”¨æ˜¯ä»è¿™ä¸ªæ•°æ®çš„å…ƒè¡¨ä¸­æŸ¥è¯¢ç›¸åº”çš„å¯¹è±¡è¿”å›
 #define fasttm(l,et,e)	gfasttm(G(l), et, e)
 
 #define ttypename(x)	luaT_typenames_[(x) + 1]

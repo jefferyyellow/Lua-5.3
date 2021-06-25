@@ -25,7 +25,7 @@
 
 
 static const char udatatypename[] = "userdata";
-// Êı¾İÀàĞÍ¶ÔÓ¦µÄÃû×Ö
+// æ•°æ®ç±»å‹å¯¹åº”çš„åå­—
 LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTAGS] = {
   "no value",
   "nil", "boolean", udatatypename, "number",
@@ -33,7 +33,7 @@ LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTAGS] = {
   "proto" /* this last case is used for tests only */
 };
 
-// Ôª·½·¨Ãû×Ö
+// å…ƒæ–¹æ³•åå­—
 void luaT_init (lua_State *L) {
   static const char *const luaT_eventname[] = {  /* ORDER TM */
     "__index", "__newindex",
@@ -45,11 +45,11 @@ void luaT_init (lua_State *L) {
     "__concat", "__call"
   };
   int i;
-  // È«¾ÖÃû×Ö
+  // å…¨å±€åå­—
   for (i=0; i<TM_N; i++) {
-    // ´´½¨×Ö·û´®
+    // åˆ›å»ºå­—ç¬¦ä¸²
     G(L)->tmname[i] = luaS_new(L, luaT_eventname[i]);
-    // ´Ó²»»ØÊÕÕâĞ©Ãû×Ö
+    // ä»ä¸å›æ”¶è¿™äº›åå­—
     luaC_fix(L, obj2gco(G(L)->tmname[i]));  /* never collect these names */
   }
 }
@@ -59,20 +59,23 @@ void luaT_init (lua_State *L) {
 ** function to be used with macro "fasttm": optimized for absence of
 ** tag methods
 */
-// µÃµ½±íµÄÔª·½·¨
+// å¾—åˆ°è¡¨çš„å…ƒæ–¹æ³•
 const TValue *luaT_gettm (Table *events, TMS event, TString *ename) {
   const TValue *tm = luaH_getshortstr(events, ename);
   lua_assert(event <= TM_EQ);
+  // å½“ç¬¬ä¸€æ¬¡æŸ¥æ‰¾è¡¨ä¸­çš„æŸä¸ªå…ƒæ–¹æ³•å¹¶ä¸”æ²¡æœ‰æ‰¾åˆ°æ—¶ï¼Œä¼šå°†Table ä¸­çš„flags æˆå‘˜å¯¹åº”
+  // çš„ä½åšç½®ä½æ“ä½œï¼Œè¿™æ ·ä¸‹ä¸€æ¬¡å†æ¥æŸ¥æ‰¾è¯¥è¡¨ä¸­åŒæ ·çš„å…ƒæ–¹æ³•æ—¶ï¼Œå¦‚æœè¯¥ä½å·²ç»ä¸º1ï¼Œé‚£ä¹ˆç›´æ¥è¿”
+  // å›NULLå³å¯ã€‚
   if (ttisnil(tm)) {  /* no tag method? */
-	// Ã»ÓĞ¸ÃÔª·½·¨£¬»º´æÕâ¸ö½á¹û
+	// æ²¡æœ‰è¯¥å…ƒæ–¹æ³•ï¼Œç¼“å­˜è¿™ä¸ªç»“æœ
     events->flags |= cast_byte(1u<<event);  /* cache this fact */
     return NULL;
   }
   else return tm;
 }
 
-// µÃµ½Ôª±í
-// ¸ù¾İÒ»¸öÊı¾İµÄÀàĞÍ·µ»ØËüµÄÔª±í
+// å¾—åˆ°å…ƒè¡¨
+// æ ¹æ®ä¸€ä¸ªæ•°æ®çš„ç±»å‹è¿”å›å®ƒçš„å…ƒè¡¨
 const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
   Table *mt;
   switch (ttnov(o)) {
@@ -93,7 +96,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
 ** Return the name of the type of an object. For tables and userdata
 ** with metatable, use their '__name' metafield, if present.
 */
-// ·µ»ØÒ»¸öÊµÌåµÄÀàĞÍÃû³Æ¡£¶ÔÓÚ´øÓĞÔª±íµÄtableºÍuserdata£¬Ê¹ÓÃËûÃÇµÄ__nameÔª×Ö¶Î
+// è¿”å›ä¸€ä¸ªå®ä½“çš„ç±»å‹åç§°ã€‚å¯¹äºå¸¦æœ‰å…ƒè¡¨çš„tableå’Œuserdataï¼Œä½¿ç”¨ä»–ä»¬çš„__nameå…ƒå­—æ®µ
 const char *luaT_objtypename (lua_State *L, const TValue *o) {
   Table *mt;
   if ((ttistable(o) && (mt = hvalue(o)->metatable) != NULL) ||
@@ -102,11 +105,11 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
     if (ttisstring(name))  /* is '__name' a string? */
       return getstr(tsvalue(name));  /* use it as type name */
   }
-  // Ê¹ÓÃ±ê×¼µÄÀàĞÍÃû
+  // ä½¿ç”¨æ ‡å‡†çš„ç±»å‹å
   return ttypename(ttnov(o));  /* else use standard type name */
 }
 
-// µ÷ÓÃÔª·½·¨
+// è°ƒç”¨å…ƒæ–¹æ³•
 void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
                   const TValue *p2, TValue *p3, int hasres) {
   ptrdiff_t result = savestack(L, p3);
@@ -115,16 +118,16 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   L->top += 3;
-  // Èç¹ûÓĞ·µ»ØÖµ¾Í°Ñp3Ñ¹²Î
+  // å¦‚æœæœ‰è¿”å›å€¼å°±æŠŠp3å‹å‚
   if (!hasres)  /* no result? 'p3' is third argument */
     setobj2s(L, L->top++, p3);  /* 3rd argument */
   /* metamethod may yield only when called from Lua code */
-  // ·ÖluaºÍCº¯Êıµ÷ÓÃ£¬Ö»ÓĞµ÷ÓÃlua´úÂëµÄÊ±ºò£¬Ôª·½·¨²ÅÄÜyield
+  // åˆ†luaå’ŒCå‡½æ•°è°ƒç”¨ï¼Œåªæœ‰è°ƒç”¨luaä»£ç çš„æ—¶å€™ï¼Œå…ƒæ–¹æ³•æ‰èƒ½yield
   if (isLua(L->ci))
     luaD_call(L, func, hasres);
   else
     luaD_callnoyield(L, func, hasres);
-  // Èç¹ûÓĞ·µ»ØÖµµÄ»°£¬µ÷ÕûµØÖ·
+  // å¦‚æœæœ‰è¿”å›å€¼çš„è¯ï¼Œè°ƒæ•´åœ°å€
   if (hasres) {  /* if has result, move it to its place */
     p3 = restorestack(L, result);
     setobjs2s(L, p3, --L->top);
@@ -134,12 +137,12 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
 
 int luaT_callbinTM (lua_State *L, const TValue *p1, const TValue *p2,
                     StkId res, TMS event) {
-  // È¡p1µÄÔª·½·¨£¬Ã»ÓĞµÄ»°È¡p2µÄÔª·½·¨
+  // å–p1çš„å…ƒæ–¹æ³•ï¼Œæ²¡æœ‰çš„è¯å–p2çš„å…ƒæ–¹æ³•
   const TValue *tm = luaT_gettmbyobj(L, p1, event);  /* try first operand */
   if (ttisnil(tm))
     tm = luaT_gettmbyobj(L, p2, event);  /* try second operand */
   if (ttisnil(tm)) return 0;
-  // µ÷ÓÃÈ¡µ½µÄÔª·½·¨
+  // è°ƒç”¨å–åˆ°çš„å…ƒæ–¹æ³•
   luaT_callTM(L, tm, p1, p2, res, 1);
   return 1;
 }
@@ -170,7 +173,7 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
 
 int luaT_callorderTM (lua_State *L, const TValue *p1, const TValue *p2,
                       TMS event) {
-  // µ÷ÓÃtm,½«·µ»ØÖµ·ÅÔÚµ±Ç°µÄÕ»¶¥
+  // è°ƒç”¨tm,å°†è¿”å›å€¼æ”¾åœ¨å½“å‰çš„æ ˆé¡¶
   if (!luaT_callbinTM(L, p1, p2, L->top, event))
     return -1;  /* no metamethod */
   else
