@@ -215,25 +215,28 @@ static void removevars (FuncState *fs, int tolevel) {
     getlocvar(fs, --fs->nactvar)->endpc = fs->pc;
 }
 
-
+// 根据名字搜索upvalue，找到就返回upvalues中的索引，没找到就返回-1，
 static int searchupvalue (FuncState *fs, TString *name) {
   int i;
   Upvaldesc *up = fs->f->upvalues;
+  // 遍历所有的upvalue
   for (i = 0; i < fs->nups; i++) {
     if (eqstr(up[i].name, name)) return i;
   }
   return -1;  /* not found */
 }
 
-
+// 分配一个新的upvalue
 static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   Proto *f = fs->f;
   int oldsize = f->sizeupvalues;
+  // 检查是否超出限制
   checklimit(fs, fs->nups + 1, MAXUPVAL, "upvalues");
   luaM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
                   Upvaldesc, MAXUPVAL, "upvalues");
   while (oldsize < f->sizeupvalues)
     f->upvalues[oldsize++].name = NULL;
+  // 赋值
   f->upvalues[fs->nups].instack = (v->k == VLOCAL);
   f->upvalues[fs->nups].idx = cast_byte(v->u.info);
   f->upvalues[fs->nups].name = name;
@@ -241,13 +244,15 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   return fs->nups++;
 }
 
-
+// 搜索fs环境中的局部变量，找到就返回局部变量的索引，没找到就返回-1
 static int searchvar (FuncState *fs, TString *n) {
   int i;
+  // 遍历所有的局部变量，通过名字比较
   for (i = cast_int(fs->nactvar) - 1; i >= 0; i--) {
     if (eqstr(n, getlocvar(fs, i)->varname))
       return i;
   }
+  // 没找到返回-1
   return -1;  /* not found */
 }
 
@@ -256,6 +261,7 @@ static int searchvar (FuncState *fs, TString *n) {
   Mark block where variable at given level was defined
   (to emit close instructions later).
 */
+// 标记在给定级别定义变量的块（稍后发出关闭指令）。
 static void markupval (FuncState *fs, int level) {
   BlockCnt *bl = fs->bl;
   while (bl->nactvar > level)
@@ -268,25 +274,38 @@ static void markupval (FuncState *fs, int level) {
   Find variable with given name 'n'. If it is an upvalue, add this
   upvalue into all intermediate functions.
 */
+// 查找具有给定名称“n”的变量。 如果它是一个upvalue，添加这个upvalue到所有中间函数。
 static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
+  // 没有更多层了
   if (fs == NULL)  /* no more levels? */
     init_exp(var, VVOID, 0);  /* default is global */
   else {
+    // 搜索变量，返回值是局部变量的索引，如果不在fs环境中就返回-1
     int v = searchvar(fs, n);  /* look up locals at current level */
+    // 是局部变量
     if (v >= 0) {  /* found? */
+      // 初始化为局部变量
       init_exp(var, VLOCAL, v);  /* variable is local */
+      // 局部变量作为一个upval使用
       if (!base)
         markupval(fs, v);  /* local will be used as an upval */
     }
+    // 这一层局部变量没有找到，那就尝试upvalues
     else {  /* not found as local at current level; try upvalues */
+        // 当前层里面搜索upvalue
       int idx = searchupvalue(fs, n);  /* try existing upvalues */
+      // 没有找到
       if (idx < 0) {  /* not found? */
+        // 递归上一层去找
         singlevaraux(fs->prev, n, var, 0);  /* try upper levels */
+        // 如果是全局变量就直接返回
         if (var->k == VVOID)  /* not found? */
           return;  /* it is a global */
         /* else was LOCAL or UPVAL */
+        // 创建一个新的
         idx  = newupvalue(fs, n, var);  /* will be a new upvalue */
       }
+      // 赋值到对应索引的upvalue
       init_exp(var, VUPVAL, idx);  /* new or old upvalue */
     }
   }
@@ -296,9 +315,12 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
 static void singlevar (LexState *ls, expdesc *var) {
   TString *varname = str_checkname(ls);
   FuncState *fs = ls->fs;
+  // 查找具有给定名称“varname”的变量，初始化
   singlevaraux(fs, varname, var, 1);
+  // 全局名字
   if (var->k == VVOID) {  /* global name? */
     expdesc key;
+    // 环境变量名
     singlevaraux(fs, ls->envn, var, 1);  /* get environment variable */
     lua_assert(var->k != VVOID);  /* this one must exist */
     codestring(ls, &key, varname);  /* key is variable name */
@@ -498,17 +520,20 @@ static void leaveblock (FuncState *fs) {
 /*
 ** adds a new prototype into list of prototypes
 */
+// 创建一个新的函数原型（将新原型添加到原型列表中）
 static Proto *addprototype (LexState *ls) {
   Proto *clp;
   lua_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;  /* prototype of current function */
+  // 需要增长
   if (fs->np >= f->sizep) {
     int oldsize = f->sizep;
     luaM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
     while (oldsize < f->sizep)
       f->p[oldsize++] = NULL;
   }
+  // 创建一个新的函数原型
   f->p[fs->np++] = clp = luaF_newproto(L);
   luaC_objbarrier(L, f, clp);
   return clp;
@@ -527,12 +552,15 @@ static void codeclosure (LexState *ls, expdesc *v) {
   luaK_exp2nextreg(fs, v);  /* fix it at the last register */
 }
 
-
+// 处理函数FuncState的信息
 static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   Proto *f;
+  // FuncState的成员prev指针指向其父函数的FuncState指针,
+  // 链接链表中的funcstates
   fs->prev = ls->fs;  /* linked list of funcstates */
   fs->ls = ls;
   ls->fs = fs;
+
   fs->pc = 0;
   fs->lasttarget = 0;
   fs->jpc = NO_JUMP;
@@ -824,25 +852,31 @@ static void parlist (LexState *ls) {
   luaK_reserveregs(fs, fs->nactvar);  /* reserve register for parameters */
 }
 
-
+// 解析一个函数体的信息对应地在函数body中
 static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   /* body ->  '(' parlist ')' block END */
   FuncState new_fs;
   BlockCnt bl;
+  // 创建一个新的函数原型
   new_fs.f = addprototype(ls);
   new_fs.f->linedefined = line;
+  // 处理函数原型的信息
   open_func(ls, &new_fs, &bl);
   checknext(ls, '(');
+  // 是否为一个方法
   if (ismethod) {
+    // 创建self变量
     new_localvarliteral(ls, "self");  /* create 'self' parameter */
     adjustlocalvars(ls, 1);
   }
+  // 参数列表
   parlist(ls);
   checknext(ls, ')');
   statlist(ls);
   new_fs.f->lastlinedefined = ls->linenumber;
   check_match(ls, TK_END, TK_FUNCTION, line);
   codeclosure(ls, e);
+  // 分析完毕之后调用close_func函数，用于将最后分析的结果保存到Proto结构体中
   close_func(ls);
 }
 
@@ -1659,9 +1693,11 @@ static void statement (LexState *ls) {
 ** compiles the main function, which is a regular vararg function with an
 ** upvalue named LUA_ENV
 */
+// 编译main函数，它是一个普通的vararg函数，带有名为LUA_ENV的upvalue
 static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   expdesc v;
+  // 
   open_func(ls, fs, &bl);
   // 主函数总是被定义位可变参数的函数
   fs->f->is_vararg = 1;  /* main function is always declared vararg */
@@ -1673,18 +1709,22 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   close_func(ls);
 }
 
-
+// 函数luaY_parser是整个Lua分析的人口函数，这个函数的返回结果就是一个Proto指针
+// Lua的闭包就是Lua语法分析之后的最终产物
 LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
   FuncState funcstate;
+  // 创建一个新的Lua闭包
   LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
   // 将cl设置在栈顶
   setclLvalue(L, L->top, cl);  /* anchor it (to avoid being collected) */
   luaD_inctop(L);
+  // 给语法分析扫描器创建一个表
   lexstate.h = luaH_new(L);  /* create table for scanner */
   sethvalue(L, L->top, lexstate.h);  /* anchor it */
   luaD_inctop(L);
+  // 新的Proto
   funcstate.f = cl->p = luaF_newproto(L);
   funcstate.f->source = luaS_new(L, name);  /* create and anchor TString */
   lua_assert(iswhite(funcstate.f));  /* do not need barrier here */

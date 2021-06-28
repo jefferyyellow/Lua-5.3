@@ -479,7 +479,7 @@ typedef struct Proto {
   lu_byte maxstacksize;  /* number of registers needed by this function */
   // upvalues的数量
   int sizeupvalues;  /* size of 'upvalues' */
-  // 常量的数目
+  // 常量的数目，存放的是常量数组（也就是k数组）的元素数量，和FuncState中nk的含义一样
   int sizek;  /* size of 'k' */
   int sizecode;
   // lineinfo的大小
@@ -533,8 +533,8 @@ typedef struct CClosure {
 // Lua闭包
 typedef struct LClosure {
   ClosureHeader;
-  struct Proto *p;	// Lua函数原型
-  // upvalues列表
+  struct Proto *p;	// Lua函数原型,用于存放解析函数体代码之后的指令。
+  // upvalues列表,用于保存外部引用的局部变量
   UpVal *upvals[1];  /* list of upvalues */
 } LClosure;
 

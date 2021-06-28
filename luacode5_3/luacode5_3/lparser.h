@@ -22,8 +22,9 @@
 */
 
 /* kinds of variables/expressions */
-// ±äÁ¿/±í´ïÊ½µÄÖÖÀà
+// å˜é‡/è¡¨è¾¾å¼çš„ç§ç±»
 typedef enum {
+  // å½“'expdesc'æè¿°ä¸€ä¸ªåˆ—è¡¨çš„æœ€åä¸€ä¸ªè¡¨è¾¾å¼æ—¶ï¼Œè¿™ç§è¡¨ç¤ºä¸€ä¸ªç©ºåˆ—è¡¨ï¼ˆæ‰€ä»¥ï¼Œæ²¡æœ‰è¡¨è¾¾å¼ï¼‰ 
   VVOID,  /* when 'expdesc' describes the last expression a list,
              this kind means an empty list (so, no expression) */
   VNIL,  /* constant nil */
@@ -32,18 +33,18 @@ typedef enum {
   VK,  /* constant in 'k'; info = index of constant in 'k' */
   VKFLT,  /* floating constant; nval = numerical float value */
   VKINT,  /* integer constant; nval = numerical integer value */
-  // ±í´ïÊ½ÔÚ¹Ì¶¨¼Ä´æÆ÷ÖĞ¾ßÓĞÆäÖµ£»info=½á¹û¼Ä´æÆ÷
+  // è¡¨è¾¾å¼åœ¨å›ºå®šå¯„å­˜å™¨ä¸­å…·æœ‰å…¶å€¼ï¼›info=ç»“æœå¯„å­˜å™¨
   VNONRELOC,  /* expression has its value in a fixed register;
                  info = result register */
-  // ¾Ö²¿±äÁ¿
+  // å±€éƒ¨å˜é‡
   VLOCAL,  /* local variable; info = local register */
-  // upvalue±äÁ¿
+  // upvalueå˜é‡
   VUPVAL,  /* upvalue variable; info = index of upvalue in 'upvalues' */
-  // Ë÷Òı±äÁ¿
-  VINDEXED,  /* indexed variable;                               // Ë÷Òı±äÁ¿
-                ind.vt = whether 't' is register or upvalue;    // 't'ÊÇÒ»¸ö¼Ä´æÆ÷»òÕßÒ»¸öupvalue
-                ind.t = table register or upvalue;              // table¼Ä´æÆ÷»òÕßupvalue
-                ind.idx = key's R/K index */                    // ¼üµÄR/KË÷Òı
+  // ç´¢å¼•å˜é‡
+  VINDEXED,  /* indexed variable;                               // ç´¢å¼•å˜é‡
+                ind.vt = whether 't' is register or upvalue;    // 't'æ˜¯ä¸€ä¸ªå¯„å­˜å™¨æˆ–è€…ä¸€ä¸ªupvalue
+                ind.t = table register or upvalue;              // tableå¯„å­˜å™¨æˆ–è€…upvalue
+                ind.idx = key's R/K index */                    // é”®çš„R/Kç´¢å¼•
   VJMP,  /* expression is a test/comparison;
             info = pc of corresponding jump instruction */
   VRELOCABLE,  /* expression can put result in any register;
@@ -56,15 +57,15 @@ typedef enum {
 #define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
 #define vkisinreg(k)	((k) == VNONRELOC || (k) == VLOCAL)
 
-// ½âÎö±í´ïÊ½µÄ½á¹û»á´æ´¢ÔÚÒ»¸öÁÙÊ±Êı¾İ½á¹¹expdescÖĞ£º
+// è§£æè¡¨è¾¾å¼çš„ç»“æœä¼šå­˜å‚¨åœ¨ä¸€ä¸ªä¸´æ—¶æ•°æ®ç»“æ„expdescä¸­ï¼š
 typedef struct expdesc {
-  // ±äÁ¿k±íÊ¾¾ßÌåµÄÀàĞÍ
+  // å˜é‡kè¡¨ç¤ºå…·ä½“çš„ç±»å‹
   expkind k;
-  // ºóÃæ½ô¸úµÄunion U¸ù¾İ²»Í¬µÄÀàĞÍ´æ´¢µÄÊı¾İÓĞËùÇø·Ö£¬¾ßÌå¿ÉÒÔ¿´expkind ÀàĞÍ¶¨ÒåºóÃæµÄ×¢ÊÍ¡£
+  // åé¢ç´§è·Ÿçš„union Uæ ¹æ®ä¸åŒçš„ç±»å‹å­˜å‚¨çš„æ•°æ®æœ‰æ‰€åŒºåˆ†ï¼Œå…·ä½“å¯ä»¥çœ‹expkind ç±»å‹å®šä¹‰åé¢çš„æ³¨é‡Šã€‚
   union {
     lua_Integer ival;    /* for VKINT */
     lua_Number nval;  /* for VKFLT */
-    // Ò»°ãÓÃÍ¾
+    // ä¸€èˆ¬ç”¨é€”
     int info;  /* for generic use */
     struct {  /* for indexed variables (VINDEXED) */
       short idx;  /* index (R/K) */
@@ -117,26 +118,30 @@ struct BlockCnt;  /* defined in lparser.c */
 
 
 /* state needed to generate code for a given function */
-// Îª¸ø¶¨º¯ÊıÉú³É´úÂëËùĞèµÄ×´Ì¬
+// ä¸ºç»™å®šå‡½æ•°ç”Ÿæˆä»£ç æ‰€éœ€çš„çŠ¶æ€
 typedef struct FuncState {
+  // è´Ÿè´£ä¿å­˜å‡½æ•°ä½“è§£æå®Œæ¯•ä¹‹åç”Ÿæˆçš„æŒ‡ä»¤æ•°æ®ã€‚
   Proto *f;  /* current function header */
+  // åŒ…å«è¯¥å‡½æ•°çš„å‡½æ•°(å®ƒæŒ‡å‘æœ¬å‡½æ•°ç¯å¢ƒçš„çˆ¶å‡½æ•°çš„FuncStateæŒ‡é’ˆã€‚)
   struct FuncState *prev;  /* enclosing function */
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
   int pc;  /* next position to code (equivalent to 'ncode') */
   int lasttarget;   /* 'label' of last 'jump label' */
   int jpc;  /* list of pending jumps to 'pc' */
+  // nkå­˜æ”¾çš„æ˜¯å¸¸é‡æ•°ç»„ï¼ˆä¹Ÿå°±æ˜¯kæ•°ç»„ï¼‰çš„å…ƒç´ æ•°é‡
   int nk;  /* number of elements in 'k' */
+  // å‡½æ•°åŸå‹çš„å…ƒç´ æ•°ç›®
   int np;  /* number of elements in 'p' */
-  // µÚÒ»¸ö¾Ö²¿±äÁ¿µÄË÷Òı£¨ÔÚDyndataÊı×éÖĞ£©
+  // ç¬¬ä¸€ä¸ªå±€éƒ¨å˜é‡çš„ç´¢å¼•ï¼ˆåœ¨Dyndataæ•°ç»„ä¸­ï¼‰
   int firstlocal;  /* index of first local var (in Dyndata array) */
-  // ProtoÖĞµÄlocvarsµÄÊıÄ¿
+  // Protoä¸­çš„locvarsçš„æ•°ç›®
   short nlocvars;  /* number of elements in 'f->locvars' */
-  // ¼¤»îµÄ¾Ö²¿±äÁ¿µÄÊıÄ¿
+  // æ¿€æ´»çš„å±€éƒ¨å˜é‡çš„æ•°ç›®
   lu_byte nactvar;  /* number of active local variables */
-  // upvaluesµÄÊıÄ¿
+  // upvaluesçš„æ•°ç›®
   lu_byte nups;  /* number of upvalues */
-  // µÚÒ»¸ö¿ÕÏĞµÄ¼Ä´æÆ÷
+  // ç¬¬ä¸€ä¸ªç©ºé—²çš„å¯„å­˜å™¨
   lu_byte freereg;  /* first free register */
 } FuncState;
 
