@@ -711,13 +711,16 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
   setclLvalue(L, ra, ncl);  /* anchor new closure in stack */
   // 给upvales赋值
   for (i = 0; i < nup; i++) {  /* fill in its upvalues */
+    // upvalue引用局部变量
     if (uv[i].instack)  /* upvalue refers to local variable? */
       ncl->upvals[i] = luaF_findupval(L, base + uv[i].idx);
+    // 从包围函数得到upvalue
     else  /* get upvalue from enclosing function */
       ncl->upvals[i] = encup[uv[i].idx];
     ncl->upvals[i]->refcount++;
     /* new closure is white, so we do not need a barrier here */
   }
+  // 如果不是black，缓存起来
   if (!isblack(p))  /* cache will not break GC invariant? */
     p->cache = ncl;  /* save it on cache for reuse */
 }
@@ -1372,8 +1375,11 @@ void luaV_execute (lua_State *L) {
       }
       vmcase(OP_CLOSURE) {
         Proto *p = cl->p->p[GETARG_Bx(i)];
+        // 取缓存的Lua闭包
         LClosure *ncl = getcached(p, cl->upvals, base);  /* cached closure */
+        // 找不到匹配的缓存
         if (ncl == NULL)  /* no match? */
+          // 创建一个新的
           pushclosure(L, p, cl->upvals, base, ra);  /* create a new one */
         else
           setclLvalue(L, ra, ncl);  /* push cashed closure */

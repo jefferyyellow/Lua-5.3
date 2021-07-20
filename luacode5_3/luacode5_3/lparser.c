@@ -333,6 +333,7 @@ static void singlevar (LexState *ls, expdesc *var) {
 static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
   FuncState *fs = ls->fs;
   int extra = nvars - nexps;
+  // 多个返回值
   if (hasmultret(e->k)) {
     extra++;  /* includes call itself */
     if (extra < 0) extra = 0;
@@ -1125,20 +1126,32 @@ static const struct {
 ** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
 ** where 'binop' is any binary operator with a priority higher than 'limit'
 */
+// 1。在传人函数的参数中，其中有一个参数用于表示当前处理的表达式的优先级，后面将根
+// 据这个参数来判断在处理二元操作符时，是先处理二元操作符左边还是右边的式子。首
+// 次调用函数时，这个参数为0 ，也就是最小的优先级。
+// 2。在进入函数后，首先判断获取到的是不是一元操作符，如果是，那么递归调用函数
+// subexpr，此时传人的优先级是常量UNARY_PRIORITY ； 否则调用函数simpleexp来处理简单
+// 的表达式。
+// 3。接着看读到的字符是不是二元操作符，如果是并且同时满足这个二元操作符的优先级大
+// 于当前subexpr函数的优先级，那么递归调用函数subexpr来处理二元操作符左边的式子。
 static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
   enterlevel(ls);
   uop = getunopr(ls->t.token);
+  // 一元操作符
   if (uop != OPR_NOUNOPR) {
     int line = ls->linenumber;
     luaX_next(ls);
+    // 递归调用
     subexpr(ls, v, UNARY_PRIORITY);
     luaK_prefix(ls->fs, uop, v, line);
   }
   else simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
+  // 扩展而运营商的优先级高于“限制”
   op = getbinopr(ls->t.token);
+  // 二元操作符，并且优先级大于limit
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
     BinOpr nextop;
@@ -1146,6 +1159,7 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
     luaX_next(ls);
     luaK_infix(ls->fs, op, v);
     /* read sub-expression with higher priority */
+    // 读取优先级更高的子表达式 
     nextop = subexpr(ls, &v2, priority[op].right);
     luaK_posfix(ls->fs, op, v, &v2, line);
     op = nextop;
@@ -1542,13 +1556,14 @@ static void localstat (LexState *ls) {
   adjustlocalvars(ls, nvars);
 }
 
-
+// 得到函数名
 static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [':' NAME] */
   int ismethod = 0;
   singlevar(ls, v);
   while (ls->t.token == '.')
     fieldsel(ls, v);
+  // 这才是方法的引用方式
   if (ls->t.token == ':') {
     ismethod = 1;
     fieldsel(ls, v);
@@ -1556,15 +1571,20 @@ static int funcname (LexState *ls, expdesc *v) {
   return ismethod;
 }
 
-
-static void funcstat (LexState *ls, int line) {
+// 处理函数的定义，即如何把函数体信息和变量结合在一起
+static void funcstat(LexState* ls, int line) {
   /* funcstat -> FUNCTION funcname body */
   int ismethod;
+  // 定义存放表达式信息的变量V和b，其中V用来保存函数名信息，b用来保存函数体信息。
   expdesc v, b;
   luaX_next(ls);  /* skip FUNCTION */
+  // 得到函数名，保存结果到变量v中
   ismethod = funcname(ls, &v);
+  // 解析函数体，并将返回的信息存放在b中
   body(ls, &b, ismethod, line);
+  // 将前面解析出来的body信息与函数名v对应上。
   luaK_storevar(ls->fs, &v, &b);
+  // 定义“发生”在第一行
   luaK_fixline(ls->fs, line);  /* definition "happens" in the first line */
 }
 

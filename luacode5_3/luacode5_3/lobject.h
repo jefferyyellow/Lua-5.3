@@ -533,7 +533,8 @@ typedef struct CClosure {
 // Lua闭包
 typedef struct LClosure {
   ClosureHeader;
-  struct Proto *p;	// Lua函数原型,用于存放解析函数体代码之后的指令。
+  // Lua函数原型,用于存放解析函数体代码之后的指令。
+  struct Proto *p;	
   // upvalues列表,用于保存外部引用的局部变量
   UpVal *upvals[1];  /* list of upvalues */
 } LClosure;

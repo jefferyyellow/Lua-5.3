@@ -32,7 +32,17 @@
 /*
 ** Upvalues for Lua closures
 */
+// Lua闭包的Upvalues
+// 我们注意到，这个结构体内部使用了union来存储数据，这说明这个数据结构可能有两种不同的状态： 
+// close以及open状态。在close状态下，使用的是TValue类型的数据；而在open状态下，
+// 使用的是两个UpVal类型的指针。下面来看看这两种状态分别指代的是什么。
+// 所谓的open状态，指的就是被引用到的变量，其所在的函数环境还存在，并没有被销毁，
+// 因此这里只需要使用指针引用到相应的变量即可。
+// 如果在离开函数外包函数之后再使用内嵌函数，此时对于这个函数而言，引用到的UpValue，变量在离开外包函数时空间被释放了，
+// 这个UpValue就是close状态的，此时需要把这个数据的值保存在结构体UpVal的成员TValue value 中。需要注意的是，
+// 这个成员的类型已经不是指针了。
 struct UpVal {
+  // 指向堆栈或者指向它自己的值
   TValue *v;  /* points to stack or to its own value */
   lu_mem refcount;  /* reference counter */
   union {

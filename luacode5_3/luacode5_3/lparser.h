@@ -122,12 +122,13 @@ struct BlockCnt;  /* defined in lparser.c */
 typedef struct FuncState {
   // 负责保存函数体解析完毕之后生成的指令数据。
   Proto *f;  /* current function header */
-  // 包含该函数的函数(它指向本函数环境的父函数的FuncState指针。)
+  // 包含该函数的函数(外包函数，它指向本函数环境的父函数的FuncState指针。)
   struct FuncState *prev;  /* enclosing function */
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
   int pc;  /* next position to code (equivalent to 'ncode') */
   int lasttarget;   /* 'label' of last 'jump label' */
+  // 它将需要回填为下一个待生成指令地址的跳转指令链接到一起
   int jpc;  /* list of pending jumps to 'pc' */
   // nk存放的是常量数组（也就是k数组）的元素数量
   int nk;  /* number of elements in 'k' */

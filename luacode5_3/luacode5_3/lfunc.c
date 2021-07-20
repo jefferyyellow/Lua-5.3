@@ -62,13 +62,16 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   lua_assert(isintwups(L) || L->openupval == NULL);
   while (*pp != NULL && (p = *pp)->v >= level) {
     lua_assert(upisopen(p));
+    // 找到对应的upvalue
     if (p->v == level)  /* found a corresponding upvalue? */
       return p;  /* return it */
     pp = &p->u.open.next;
   }
   /* not found: create a new upvalue */
+  // 没找到就新建一个
   uv = luaM_new(L, UpVal);
   uv->refcount = 0;
+  // 链接到open upvalues列表
   uv->u.open.next = *pp;  /* link it to list of open upvalues */
   uv->u.open.touched = 1;
   *pp = uv;
