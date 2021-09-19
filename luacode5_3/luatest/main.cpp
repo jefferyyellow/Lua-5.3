@@ -274,9 +274,9 @@ int main()
 
 	luaL_dofile(L, "luatest.lua");
 
-	int a = MASK1(7,4);
-	int b = MASK1(8,3);
+	//int a = MASK1(7,4);
+	//int b = MASK1(8,3);
 
-	int a1 = MASK0(7, 4);
-	int b1 = MASK0(8, 3);
+	//int a1 = MASK0(7, 4);
+	//int b1 = MASK0(8, 3);
 }

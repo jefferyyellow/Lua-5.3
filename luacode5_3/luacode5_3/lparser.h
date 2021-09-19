@@ -127,7 +127,9 @@ typedef struct FuncState {
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
   int pc;  /* next position to code (equivalent to 'ncode') */
+  // 上一个跳转的标签
   int lasttarget;   /* 'label' of last 'jump label' */
+  // 没有确定的跳转到“pc”的列表
   int jpc;  /* list of pending jumps to 'pc' */
   // nk存放的是常量数组（也就是k数组）的元素数量
   int nk;  /* number of elements in 'k' */

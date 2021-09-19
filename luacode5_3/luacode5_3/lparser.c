@@ -1101,9 +1101,13 @@ static BinOpr getbinopr (int op) {
   }
 }
 
-
+// 每一个二元操作符左边的优先级和右边的优先级
+// 比如，power操作符的左右优先级是不同的，其中左边的优先级大于右边的优先级。比如，
+// 表达式2^1^2 是右结合的， 即与表达式2^(1^2)一样。
 static const struct {
+  // 每一个二元操作符左边的优先级
   lu_byte left;  /* left priority for each binary operator */
+  // 右边优先级
   lu_byte right; /* right priority */
 } priority[] = {  /* ORDER OPR */
    {10, 10}, {10, 10},           /* '+' '-' */
@@ -1118,18 +1122,30 @@ static const struct {
    {2, 2}, {1, 1}            /* and, or */
 };
 
+// 一元运算符的优先级
 #define UNARY_PRIORITY	12  /* priority for unary operators */
 
 
 /*
 ** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
 ** where 'binop' is any binary operator with a priority higher than 'limit'
-*/
+*/ 
+// subexpr -> (simpleexp | unop subexpr) { binop subexpr }
+// 其中“binop”是优先级高于“limit”的任何二元运算符
+// 1.在传人函数的参数中，其中有一个参数用于表示当前处理的表达式的优先级，后面将根
+// 据这个参数来判断在处理二元操作符时，是先处理二元操作符左边还是右边的式子。首
+// 次调用函数时，这个参数为0 ，也就是最小的优先级。
+// 2.在进入函数后，首先判断获取到的是不是一元操作符，如果是，那么递归调用函数
+// subexpr，此时传人的优先级是常量UNARY_PRIORITY ； 否则调用函数simpleexp 来处理简单
+// 的表达式。
+// 3.接着看读到的字符是不是二元操作符，如果是并且同时满足这个二元操作符的优先级大
+// 于当前subexpr函数的优先级，那么递归调用函数subexpr来处理二元操作符左边的式子。
 static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
   enterlevel(ls);
   uop = getunopr(ls->t.token);
+  // 一元操作符
   if (uop != OPR_NOUNOPR) {
     int line = ls->linenumber;
     luaX_next(ls);
@@ -1138,6 +1154,7 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   }
   else simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
+  // 当操作符的优先级比'limit'高就展开
   op = getbinopr(ls->t.token);
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
@@ -1146,6 +1163,7 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
     luaX_next(ls);
     luaK_infix(ls->fs, op, v);
     /* read sub-expression with higher priority */
+    // 读取优先级更高的子表达式
     nextop = subexpr(ls, &v2, priority[op].right);
     luaK_posfix(ls->fs, op, v, &v2, line);
     op = nextop;

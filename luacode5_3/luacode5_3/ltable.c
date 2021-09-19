@@ -607,7 +607,7 @@ const TValue *luaH_getint (Table *t, lua_Integer key) {
 /*
 ** search function for short strings
 */
-// 得到短字符串的值
+// 搜索短字符对应的函数
 const TValue *luaH_getshortstr (Table *t, TString *key) {
   Node *n = hashstr(t, key);
   lua_assert(key->tt == LUA_TSHRSTR);

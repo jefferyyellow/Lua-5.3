@@ -87,6 +87,7 @@ void luaK_nil (FuncState *fs, int from, int n) {
 ** Gets the destination address of a jump instruction. Used to traverse
 ** a list of jumps.
 */
+// 得到跳转指令的目标地址。用于遍历跳转指令列表
 static int getjump (FuncState *fs, int pc) {
   int offset = GETARG_sBx(fs->f->code[pc]);
   if (offset == NO_JUMP)  /* point to itself represents end of list */
@@ -100,12 +101,18 @@ static int getjump (FuncState *fs, int pc) {
 ** Fix jump instruction at position 'pc' to jump to 'dest'.
 ** (Jump addresses are relative in Lua)
 */
+// 修复了位置 'pc' 处的跳转指令以跳转到 'dest'。
+// lua中跳转地址都是相对的
 static void fixjump (FuncState *fs, int pc, int dest) {
+  // 得到pc对应的指令
   Instruction *jmp = &fs->f->code[pc];
+  // 计算连接的地址到当前地址的相对位置
   int offset = dest - (pc + 1);
   lua_assert(dest != NO_JUMP);
+  // 跳转位置进行校验
   if (abs(offset) > MAXARG_sBx)
     luaX_syntaxerror(fs->ls, "control structure too long");
+  // 设置跳转
   SETARG_sBx(*jmp, offset);
 }
 
@@ -113,15 +120,23 @@ static void fixjump (FuncState *fs, int pc, int dest) {
 /*
 ** Concatenate jump-list 'l2' into jump-list 'l1'
 */
+// 将跳转列表l2连接到跳转列表l1中
+// 将一个新的跳转位置加入空悬跳转链表的操作
+// 可以看到，这个跳转链表的实现并不像经典的链表实现那样，有一个类似next 的指针指向下
+// 一个元素，而是利用了跳转指令中的跳转地址这一个参数来存储链表中下一个元素的值。
 void luaK_concat (FuncState *fs, int *l1, int l2) {
+    // l2不是个跳转列表
   if (l2 == NO_JUMP) return;  /* nothing to concatenate? */
+  // l1本身为空，那就直接赋值
   else if (*l1 == NO_JUMP)  /* no original list? */
     *l1 = l2;  /* 'l1' points to 'l2' */
   else {
     int list = *l1;
     int next;
+    // 找到最后一个元素
     while ((next = getjump(fs, list)) != NO_JUMP)  /* find last element */
       list = next;
+    // 将l2链接在最后
     fixjump(fs, list, l2);  /* last element links to 'l2' */
   }
 }
@@ -133,11 +148,16 @@ void luaK_concat (FuncState *fs, int *l1, int l2) {
 ** this position (kept in 'jpc'), link them all together so that
 ** 'patchlistaux' will fix all them directly to the final destination.
 */
+// 创建一个跳转指令并返回它的位置，然后它的目标地址可以稍后修复（使用'fixjump'）。
+// 如果有跳转到这个位置（保存在“jpc”中），将它们链接在一起，以便调用'patchlistaux'
+// 将最终的目的地址填写在里面
 int luaK_jump (FuncState *fs) {
   int jpc = fs->jpc;  /* save list of jumps to here */
   int j;
   fs->jpc = NO_JUMP;  /* no more jumps to here */
+  // 生成jmp指令
   j = luaK_codeAsBx(fs, OP_JMP, 0, NO_JUMP);
+  // 最后将前面预存的jpc指针加入到新生成的OP_JMP指令的跳转位置中
   luaK_concat(fs, &j, jpc);  /* keep them on hold */
   return j;
 }
@@ -165,6 +185,8 @@ static int condjump (FuncState *fs, OpCode op, int A, int B, int C) {
 ** returns current 'pc' and marks it as a jump target (to avoid wrong
 ** optimizations with consecutive instructions not in the same basic block).
 */
+// 返回当前的 'pc' 并将其标记为跳转目标（以避免错误
+// 使用不在同一基本块中的连续指令进行优化）。
 int luaK_getlabel (FuncState *fs) {
   fs->lasttarget = fs->pc;
   return fs->pc;
@@ -221,10 +243,15 @@ static void removevalues (FuncState *fs, int list) {
 ** registers: tests producing values jump to 'vtarget' (and put their
 ** values in 'reg'), other tests jump to 'dtarget'.
 */
+// 遍历所有的列表，修复他们的目标地址和寄存器：
+// tests跳转到'vtarget'的值（并将它们的值放入'reg'中），否则tests调整到'dtarget'
 static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
                           int dtarget) {
+    // 遍历跳转列表
   while (list != NO_JUMP) {
+      // 先暂时保存下一个跳转列表项
     int next = getjump(fs, list);
+    // 回填地址
     if (patchtestreg(fs, list, reg))
       fixjump(fs, list, vtarget);
     else
@@ -239,6 +266,8 @@ static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
 ** to current position with no values) and reset list of pending
 ** jumps
 */
+// 确保所有悬空的跳转到当前位置的指令目标地址都回填好（跳转到没有值的当前位置）
+// 重置悬空的跳转列表
 static void dischargejpc (FuncState *fs) {
   patchlistaux(fs, fs->jpc, fs->pc, NO_REG, fs->pc);
   fs->jpc = NO_JUMP;
@@ -249,6 +278,9 @@ static void dischargejpc (FuncState *fs) {
 ** Add elements in 'list' to list of pending jumps to "here"
 ** (current position)
 */
+// 将“list”中的元素添加到“here”的挂起跳转列表(当前位置)
+// FuncState结构体有一个名为jpc的成员，它将需要回填为下一个待生成指令地址的跳转指令
+// 链接到一起。这个操作是在luaK_patchtohere函数中进行的：
 void luaK_patchtohere (FuncState *fs, int list) {
   luaK_getlabel(fs);  /* mark "here" as a jump target */
   luaK_concat(fs, &fs->jpc, list);
@@ -260,6 +292,8 @@ void luaK_patchtohere (FuncState *fs, int list) {
 ** (The assert means that we cannot fix a jump to a forward address
 ** because we only know addresses once code is generated.)
 */
+// 回填跳转到‘target'的所有跳转列表的项
+// 断言意味着我们无法修复到前向地址的跳转因为我们只有在生成代码后才知道地址
 void luaK_patchlist (FuncState *fs, int list, int target) {
   if (target == fs->pc)  /* 'target' is current position? */
     luaK_patchtohere(fs, list);  /* add list to pending jumps */
@@ -292,6 +326,7 @@ void luaK_patchclose (FuncState *fs, int list, int level) {
 */
 static int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->f;
+  // 回填所有跳转到pc的目标地址
   dischargejpc(fs);  /* 'pc' will change */
   /* put new instruction in code array */
   luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
@@ -976,6 +1011,9 @@ void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
+// 如果展开会引发错误，则返回 false。
+// 按位运算需要可转换为整数的操作数；
+// 除法运算不能有 0 作为除数。
 static int validop (int op, TValue *v1, TValue *v2) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
@@ -983,8 +1021,10 @@ static int validop (int op, TValue *v1, TValue *v2) {
       lua_Integer i;
       return (tointeger(v1, &i) && tointeger(v2, &i));
     }
+    // 除法不能有0作为除数
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
       return (nvalue(v2) != 0);
+      // 其他情况都是合法的
     default: return 1;  /* everything else is valid */
   }
 }
@@ -994,9 +1034,12 @@ static int validop (int op, TValue *v1, TValue *v2) {
 ** Try to "constant-fold" an operation; return 1 iff successful.
 ** (In this case, 'e1' has the final result.)
 */
+// 尝试常量展开一个表达式，如果成功就返回1
+// (在这种情况下，'e1'有最后的结果)
 static int constfolding (FuncState *fs, int op, expdesc *e1,
                                                 const expdesc *e2) {
   TValue v1, v2, res;
+  // 两个变量是否能转化成数字，操作符是否可用
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
   luaO_arith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */

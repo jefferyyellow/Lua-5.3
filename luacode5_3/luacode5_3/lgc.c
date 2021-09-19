@@ -190,12 +190,15 @@ void luaC_upvalbarrier_ (lua_State *L, UpVal *uv) {
     markobject(g, o);
 }
 
-
+// 对象o永远不回收
 void luaC_fix (lua_State *L, GCObject *o) {
   global_State *g = G(L);
   lua_assert(g->allgc == o);  /* object must be 1st in 'allgc' list! */
+  // 他们将永远是灰色的
   white2gray(o);  /* they will be gray forever */
+  // 从“allgc”列表中删除对象 
   g->allgc = o->next;  /* remove object from 'allgc' list */
+  // 将其链接到“fixedgc”列表
   o->next = g->fixedgc;  /* link it to 'fixedgc' list */
   g->fixedgc = o;
 }

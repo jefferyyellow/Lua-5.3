@@ -184,6 +184,7 @@ typedef struct global_State {
   // 指向版本号的指针
   const lua_Number *version;  /* pointer to version number */
   TString *memerrmsg;  /* memory-error message */
+  // 元方法的名字数组
   TString *tmname[TM_N];  /* array with tag-method names */
   struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
   TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
