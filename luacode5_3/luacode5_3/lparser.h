@@ -122,7 +122,7 @@ struct BlockCnt;  /* defined in lparser.c */
 typedef struct FuncState {
   // 负责保存函数体解析完毕之后生成的指令数据。
   Proto *f;  /* current function header */
-  // 包含该函数的函数(它指向本函数环境的父函数的FuncState指针。)
+  // 包含该函数的函数(外包函数，它指向本函数环境的父函数的FuncState指针。)
   struct FuncState *prev;  /* enclosing function */
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */

@@ -211,6 +211,7 @@ struct lua_State {
   StkId stack_last;  /* last free slot in the stack */
   // 堆栈起始部分
   StkId stack;  /* stack base */
+  // 此堆栈中打开的upvalues列表
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   struct lua_State *twups;  /* list of threads with open upvalues */

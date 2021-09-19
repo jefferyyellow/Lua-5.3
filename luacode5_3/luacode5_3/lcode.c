@@ -87,7 +87,7 @@ void luaK_nil (FuncState *fs, int from, int n) {
 ** Gets the destination address of a jump instruction. Used to traverse
 ** a list of jumps.
 */
-// µÃµ½Ìø×ªÖ¸ÁîµÄÄ¿±êµØÖ·¡£ÓÃÓÚ±éÀúÌø×ªÖ¸ÁîÁÐ±í
+// å¾—åˆ°è·³è½¬æŒ‡ä»¤çš„ç›®æ ‡åœ°å€ã€‚ç”¨äºŽéåŽ†è·³è½¬æŒ‡ä»¤åˆ—è¡¨
 static int getjump (FuncState *fs, int pc) {
   int offset = GETARG_sBx(fs->f->code[pc]);
   if (offset == NO_JUMP)  /* point to itself represents end of list */
@@ -101,18 +101,18 @@ static int getjump (FuncState *fs, int pc) {
 ** Fix jump instruction at position 'pc' to jump to 'dest'.
 ** (Jump addresses are relative in Lua)
 */
-// ÐÞ¸´ÁËÎ»ÖÃ 'pc' ´¦µÄÌø×ªÖ¸ÁîÒÔÌø×ªµ½ 'dest'¡£
-// luaÖÐÌø×ªµØÖ·¶¼ÊÇÏà¶ÔµÄ
+// ä¿®å¤äº†ä½ç½® 'pc' å¤„çš„è·³è½¬æŒ‡ä»¤ä»¥è·³è½¬åˆ° 'dest'ã€‚
+// luaä¸­è·³è½¬åœ°å€éƒ½æ˜¯ç›¸å¯¹çš„
 static void fixjump (FuncState *fs, int pc, int dest) {
-  // µÃµ½pc¶ÔÓ¦µÄÖ¸Áî
+  // å¾—åˆ°pcå¯¹åº”çš„æŒ‡ä»¤
   Instruction *jmp = &fs->f->code[pc];
-  // ¼ÆËãÁ¬½ÓµÄµØÖ·µ½µ±Ç°µØÖ·µÄÏà¶ÔÎ»ÖÃ
+  // è®¡ç®—è¿žæŽ¥çš„åœ°å€åˆ°å½“å‰åœ°å€çš„ç›¸å¯¹ä½ç½®
   int offset = dest - (pc + 1);
   lua_assert(dest != NO_JUMP);
-  // Ìø×ªÎ»ÖÃ½øÐÐÐ£Ñé
+  // è·³è½¬ä½ç½®è¿›è¡Œæ ¡éªŒ
   if (abs(offset) > MAXARG_sBx)
     luaX_syntaxerror(fs->ls, "control structure too long");
-  // ÉèÖÃÌø×ª
+  // è®¾ç½®è·³è½¬
   SETARG_sBx(*jmp, offset);
 }
 
@@ -120,23 +120,23 @@ static void fixjump (FuncState *fs, int pc, int dest) {
 /*
 ** Concatenate jump-list 'l2' into jump-list 'l1'
 */
-// ½«Ìø×ªÁÐ±íl2Á¬½Óµ½Ìø×ªÁÐ±íl1ÖÐ
-// ½«Ò»¸öÐÂµÄÌø×ªÎ»ÖÃ¼ÓÈë¿ÕÐüÌø×ªÁ´±íµÄ²Ù×÷
-// ¿ÉÒÔ¿´µ½£¬Õâ¸öÌø×ªÁ´±íµÄÊµÏÖ²¢²»Ïñ¾­µäµÄÁ´±íÊµÏÖÄÇÑù£¬ÓÐÒ»¸öÀàËÆnext µÄÖ¸ÕëÖ¸ÏòÏÂ
-// Ò»¸öÔªËØ£¬¶øÊÇÀûÓÃÁËÌø×ªÖ¸ÁîÖÐµÄÌø×ªµØÖ·ÕâÒ»¸ö²ÎÊýÀ´´æ´¢Á´±íÖÐÏÂÒ»¸öÔªËØµÄÖµ¡£
+// å°†è·³è½¬åˆ—è¡¨l2è¿žæŽ¥åˆ°è·³è½¬åˆ—è¡¨l1ä¸­
+// å°†ä¸€ä¸ªæ–°çš„è·³è½¬ä½ç½®åŠ å…¥ç©ºæ‚¬è·³è½¬é“¾è¡¨çš„æ“ä½œ
+// å¯ä»¥çœ‹åˆ°ï¼Œè¿™ä¸ªè·³è½¬é“¾è¡¨çš„å®žçŽ°å¹¶ä¸åƒç»å…¸çš„é“¾è¡¨å®žçŽ°é‚£æ ·ï¼Œæœ‰ä¸€ä¸ªç±»ä¼¼next çš„æŒ‡é’ˆæŒ‡å‘ä¸‹
+// ä¸€ä¸ªå…ƒç´ ï¼Œè€Œæ˜¯åˆ©ç”¨äº†è·³è½¬æŒ‡ä»¤ä¸­çš„è·³è½¬åœ°å€è¿™ä¸€ä¸ªå‚æ•°æ¥å­˜å‚¨é“¾è¡¨ä¸­ä¸‹ä¸€ä¸ªå…ƒç´ çš„å€¼ã€‚
 void luaK_concat (FuncState *fs, int *l1, int l2) {
-    // l2²»ÊÇ¸öÌø×ªÁÐ±í
+    // l2ä¸æ˜¯ä¸ªè·³è½¬åˆ—è¡¨
   if (l2 == NO_JUMP) return;  /* nothing to concatenate? */
-  // l1±¾ÉíÎª¿Õ£¬ÄÇ¾ÍÖ±½Ó¸³Öµ
+  // l1æœ¬èº«ä¸ºç©ºï¼Œé‚£å°±ç›´æŽ¥èµ‹å€¼
   else if (*l1 == NO_JUMP)  /* no original list? */
     *l1 = l2;  /* 'l1' points to 'l2' */
   else {
     int list = *l1;
     int next;
-    // ÕÒµ½×îºóÒ»¸öÔªËØ
+    // æ‰¾åˆ°æœ€åŽä¸€ä¸ªå…ƒç´ 
     while ((next = getjump(fs, list)) != NO_JUMP)  /* find last element */
       list = next;
-    // ½«l2Á´½ÓÔÚ×îºó
+    // å°†l2é“¾æŽ¥åœ¨æœ€åŽ
     fixjump(fs, list, l2);  /* last element links to 'l2' */
   }
 }
@@ -148,16 +148,16 @@ void luaK_concat (FuncState *fs, int *l1, int l2) {
 ** this position (kept in 'jpc'), link them all together so that
 ** 'patchlistaux' will fix all them directly to the final destination.
 */
-// ´´½¨Ò»¸öÌø×ªÖ¸Áî²¢·µ»ØËüµÄÎ»ÖÃ£¬È»ºóËüµÄÄ¿±êµØÖ·¿ÉÒÔÉÔºóÐÞ¸´£¨Ê¹ÓÃ'fixjump'£©¡£
-// Èç¹ûÓÐÌø×ªµ½Õâ¸öÎ»ÖÃ£¨±£´æÔÚ¡°jpc¡±ÖÐ£©£¬½«ËüÃÇÁ´½ÓÔÚÒ»Æð£¬ÒÔ±ãµ÷ÓÃ'patchlistaux'
-// ½«×îÖÕµÄÄ¿µÄµØÖ·ÌîÐ´ÔÚÀïÃæ
+// åˆ›å»ºä¸€ä¸ªè·³è½¬æŒ‡ä»¤å¹¶è¿”å›žå®ƒçš„ä½ç½®ï¼Œç„¶åŽå®ƒçš„ç›®æ ‡åœ°å€å¯ä»¥ç¨åŽä¿®å¤ï¼ˆä½¿ç”¨'fixjump'ï¼‰ã€‚
+// å¦‚æžœæœ‰è·³è½¬åˆ°è¿™ä¸ªä½ç½®ï¼ˆä¿å­˜åœ¨â€œjpcâ€ä¸­ï¼‰ï¼Œå°†å®ƒä»¬é“¾æŽ¥åœ¨ä¸€èµ·ï¼Œä»¥ä¾¿è°ƒç”¨'patchlistaux'
+// å°†æœ€ç»ˆçš„ç›®çš„åœ°å€å¡«å†™åœ¨é‡Œé¢
 int luaK_jump (FuncState *fs) {
   int jpc = fs->jpc;  /* save list of jumps to here */
   int j;
   fs->jpc = NO_JUMP;  /* no more jumps to here */
-  // Éú³ÉjmpÖ¸Áî
+  // ç”ŸæˆjmpæŒ‡ä»¤
   j = luaK_codeAsBx(fs, OP_JMP, 0, NO_JUMP);
-  // ×îºó½«Ç°ÃæÔ¤´æµÄjpcÖ¸Õë¼ÓÈëµ½ÐÂÉú³ÉµÄOP_JMPÖ¸ÁîµÄÌø×ªÎ»ÖÃÖÐ
+  // æœ€åŽå°†å‰é¢é¢„å­˜çš„jpcæŒ‡é’ˆåŠ å…¥åˆ°æ–°ç”Ÿæˆçš„OP_JMPæŒ‡ä»¤çš„è·³è½¬ä½ç½®ä¸­
   luaK_concat(fs, &j, jpc);  /* keep them on hold */
   return j;
 }
@@ -185,8 +185,8 @@ static int condjump (FuncState *fs, OpCode op, int A, int B, int C) {
 ** returns current 'pc' and marks it as a jump target (to avoid wrong
 ** optimizations with consecutive instructions not in the same basic block).
 */
-// ·µ»Øµ±Ç°µÄ 'pc' ²¢½«Æä±ê¼ÇÎªÌø×ªÄ¿±ê£¨ÒÔ±ÜÃâ´íÎó
-// Ê¹ÓÃ²»ÔÚÍ¬Ò»»ù±¾¿éÖÐµÄÁ¬ÐøÖ¸Áî½øÐÐÓÅ»¯£©¡£
+// è¿”å›žå½“å‰çš„ 'pc' å¹¶å°†å…¶æ ‡è®°ä¸ºè·³è½¬ç›®æ ‡ï¼ˆä»¥é¿å…é”™è¯¯
+// ä½¿ç”¨ä¸åœ¨åŒä¸€åŸºæœ¬å—ä¸­çš„è¿žç»­æŒ‡ä»¤è¿›è¡Œä¼˜åŒ–ï¼‰ã€‚
 int luaK_getlabel (FuncState *fs) {
   fs->lasttarget = fs->pc;
   return fs->pc;
@@ -243,15 +243,15 @@ static void removevalues (FuncState *fs, int list) {
 ** registers: tests producing values jump to 'vtarget' (and put their
 ** values in 'reg'), other tests jump to 'dtarget'.
 */
-// ±éÀúËùÓÐµÄÁÐ±í£¬ÐÞ¸´ËûÃÇµÄÄ¿±êµØÖ·ºÍ¼Ä´æÆ÷£º
-// testsÌø×ªµ½'vtarget'µÄÖµ£¨²¢½«ËüÃÇµÄÖµ·ÅÈë'reg'ÖÐ£©£¬·ñÔòtestsµ÷Õûµ½'dtarget'
+// éåŽ†æ‰€æœ‰çš„åˆ—è¡¨ï¼Œä¿®å¤ä»–ä»¬çš„ç›®æ ‡åœ°å€å’Œå¯„å­˜å™¨ï¼š
+// testsè·³è½¬åˆ°'vtarget'çš„å€¼ï¼ˆå¹¶å°†å®ƒä»¬çš„å€¼æ”¾å…¥'reg'ä¸­ï¼‰ï¼Œå¦åˆ™testsè°ƒæ•´åˆ°'dtarget'
 static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
                           int dtarget) {
-    // ±éÀúÌø×ªÁÐ±í
+    // éåŽ†è·³è½¬åˆ—è¡¨
   while (list != NO_JUMP) {
-      // ÏÈÔÝÊ±±£´æÏÂÒ»¸öÌø×ªÁÐ±íÏî
+      // å…ˆæš‚æ—¶ä¿å­˜ä¸‹ä¸€ä¸ªè·³è½¬åˆ—è¡¨é¡¹
     int next = getjump(fs, list);
-    // »ØÌîµØÖ·
+    // å›žå¡«åœ°å€
     if (patchtestreg(fs, list, reg))
       fixjump(fs, list, vtarget);
     else
@@ -266,8 +266,8 @@ static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
 ** to current position with no values) and reset list of pending
 ** jumps
 */
-// È·±£ËùÓÐÐü¿ÕµÄÌø×ªµ½µ±Ç°Î»ÖÃµÄÖ¸ÁîÄ¿±êµØÖ·¶¼»ØÌîºÃ£¨Ìø×ªµ½Ã»ÓÐÖµµÄµ±Ç°Î»ÖÃ£©
-// ÖØÖÃÐü¿ÕµÄÌø×ªÁÐ±í
+// ç¡®ä¿æ‰€æœ‰æ‚¬ç©ºçš„è·³è½¬åˆ°å½“å‰ä½ç½®çš„æŒ‡ä»¤ç›®æ ‡åœ°å€éƒ½å›žå¡«å¥½ï¼ˆè·³è½¬åˆ°æ²¡æœ‰å€¼çš„å½“å‰ä½ç½®ï¼‰
+// é‡ç½®æ‚¬ç©ºçš„è·³è½¬åˆ—è¡¨
 static void dischargejpc (FuncState *fs) {
   patchlistaux(fs, fs->jpc, fs->pc, NO_REG, fs->pc);
   fs->jpc = NO_JUMP;
@@ -278,9 +278,9 @@ static void dischargejpc (FuncState *fs) {
 ** Add elements in 'list' to list of pending jumps to "here"
 ** (current position)
 */
-// ½«¡°list¡±ÖÐµÄÔªËØÌí¼Óµ½¡°here¡±µÄ¹ÒÆðÌø×ªÁÐ±í(µ±Ç°Î»ÖÃ)
-// FuncState½á¹¹ÌåÓÐÒ»¸öÃûÎªjpcµÄ³ÉÔ±£¬Ëü½«ÐèÒª»ØÌîÎªÏÂÒ»¸ö´ýÉú³ÉÖ¸ÁîµØÖ·µÄÌø×ªÖ¸Áî
-// Á´½Óµ½Ò»Æð¡£Õâ¸ö²Ù×÷ÊÇÔÚluaK_patchtohereº¯ÊýÖÐ½øÐÐµÄ£º
+// å°†â€œlistâ€ä¸­çš„å…ƒç´ æ·»åŠ åˆ°â€œhereâ€çš„æŒ‚èµ·è·³è½¬åˆ—è¡¨(å½“å‰ä½ç½®)
+// FuncStateç»“æž„ä½“æœ‰ä¸€ä¸ªåä¸ºjpcçš„æˆå‘˜ï¼Œå®ƒå°†éœ€è¦å›žå¡«ä¸ºä¸‹ä¸€ä¸ªå¾…ç”ŸæˆæŒ‡ä»¤åœ°å€çš„è·³è½¬æŒ‡ä»¤
+// é“¾æŽ¥åˆ°ä¸€èµ·ã€‚è¿™ä¸ªæ“ä½œæ˜¯åœ¨luaK_patchtohereå‡½æ•°ä¸­è¿›è¡Œçš„ï¼š
 void luaK_patchtohere (FuncState *fs, int list) {
   luaK_getlabel(fs);  /* mark "here" as a jump target */
   luaK_concat(fs, &fs->jpc, list);
@@ -292,8 +292,8 @@ void luaK_patchtohere (FuncState *fs, int list) {
 ** (The assert means that we cannot fix a jump to a forward address
 ** because we only know addresses once code is generated.)
 */
-// »ØÌîÌø×ªµ½¡®target'µÄËùÓÐÌø×ªÁÐ±íµÄÏî
-// ¶ÏÑÔÒâÎ¶×ÅÎÒÃÇÎÞ·¨ÐÞ¸´µ½Ç°ÏòµØÖ·µÄÌø×ªÒòÎªÎÒÃÇÖ»ÓÐÔÚÉú³É´úÂëºó²ÅÖªµÀµØÖ·
+// å›žå¡«è·³è½¬åˆ°â€˜target'çš„æ‰€æœ‰è·³è½¬åˆ—è¡¨çš„é¡¹
+// æ–­è¨€æ„å‘³ç€æˆ‘ä»¬æ— æ³•ä¿®å¤åˆ°å‰å‘åœ°å€çš„è·³è½¬å› ä¸ºæˆ‘ä»¬åªæœ‰åœ¨ç”Ÿæˆä»£ç åŽæ‰çŸ¥é“åœ°å€
 void luaK_patchlist (FuncState *fs, int list, int target) {
   if (target == fs->pc)  /* 'target' is current position? */
     luaK_patchtohere(fs, list);  /* add list to pending jumps */
@@ -326,7 +326,7 @@ void luaK_patchclose (FuncState *fs, int list, int level) {
 */
 static int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->f;
-  // »ØÌîËùÓÐÌø×ªµ½pcµÄÄ¿±êµØÖ·
+  // å›žå¡«æ‰€æœ‰è·³è½¬åˆ°pcçš„ç›®æ ‡åœ°å€
   dischargejpc(fs);  /* 'pc' will change */
   /* put new instruction in code array */
   luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
@@ -590,25 +590,25 @@ void luaK_setoneret (FuncState *fs, expdesc *e) {
 */
 void luaK_dischargevars (FuncState *fs, expdesc *e) {
   switch (e->k) {
-    // ÒÑ¾­ÔÚ¼Ä´æÆ÷ÀïÁË
-	// local a = 10;Èç¹ûÒ»¸ö±äÁ¿ÊÇVLOCAL £¬ËµÃ÷Ç°ÃæÒÑ¾­¿´µ½¹ýÕâ¸ö±äÁ¿ÁË£¬±ÈÈçÕâÀïµÄ¾Ö²¿±äÁ¿a £¬ËüÔÚµÚ
-	// Ò»ÐÐ´úÂëÖÐÒÑ¾­³öÏÖÁË£¬ÄÇÃ´Ëü¼È²»ÐèÒªÖØ¶¨Ïò£¬Ò²²»ÐèÒª¶îÍâµÄÓï¾ä°ÑÕâ¸öÖµ¼ÓÔØ½øÀ´µÄ¡£
+    // å·²ç»åœ¨å¯„å­˜å™¨é‡Œäº†
+	// local a = 10;å¦‚æžœä¸€ä¸ªå˜é‡æ˜¯VLOCAL ï¼Œè¯´æ˜Žå‰é¢å·²ç»çœ‹åˆ°è¿‡è¿™ä¸ªå˜é‡äº†ï¼Œæ¯”å¦‚è¿™é‡Œçš„å±€éƒ¨å˜é‡a ï¼Œå®ƒåœ¨ç¬¬
+	// ä¸€è¡Œä»£ç ä¸­å·²ç»å‡ºçŽ°äº†ï¼Œé‚£ä¹ˆå®ƒæ—¢ä¸éœ€è¦é‡å®šå‘ï¼Œä¹Ÿä¸éœ€è¦é¢å¤–çš„è¯­å¥æŠŠè¿™ä¸ªå€¼åŠ è½½è¿›æ¥çš„ã€‚
     case VLOCAL: {  /* already in a register */
-      // ±ä³ÉÁËÒ»¸ö²»ÐèÒªÖØ¶¨Î»µÄÖµ
+      // å˜æˆäº†ä¸€ä¸ªä¸éœ€è¦é‡å®šä½çš„å€¼
       e->k = VNONRELOC;  /* becomes a non-relocatable value */
       break;
     }
-    // upvalue±äÁ¿
+    // upvalueå˜é‡
     case VUPVAL: {  /* move value to some (pending) register */
       e->u.info = luaK_codeABC(fs, OP_GETUPVAL, 0, e->u.info, 0);
       e->k = VRELOCABLE;
       break;
     }
-    // Ë÷Òý±äÁ¿
+    // ç´¢å¼•å˜é‡
     case VINDEXED: {
       OpCode op;
       freereg(fs, e->u.ind.idx);
-      // ¾Ö²¿±äÁ¿
+      // å±€éƒ¨å˜é‡
       if (e->u.ind.vt == VLOCAL) {  /* is 't' in a register? */
         freereg(fs, e->u.ind.t);
         op = OP_GETTABLE;
@@ -635,7 +635,7 @@ void luaK_dischargevars (FuncState *fs, expdesc *e) {
 ** Ensures expression value is in register 'reg' (and therefore
 ** 'e' will become a non-relocatable expression).
 */
-// È·±£±í´ïÊ½ÖµÔÚ¼Ä´æÆ÷¡°reg¡±ÖÐ£¨Òò´Ë'e' ½«³ÉÎª²»¿ÉÖØ¶¨Î»µÄ±í´ïÊ½£©¡£
+// ç¡®ä¿è¡¨è¾¾å¼å€¼åœ¨å¯„å­˜å™¨â€œregâ€ä¸­ï¼ˆå› æ­¤'e' å°†æˆä¸ºä¸å¯é‡å®šä½çš„è¡¨è¾¾å¼ï¼‰ã€‚
 static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
   luaK_dischargevars(fs, e);
   switch (e->k) {
@@ -659,15 +659,15 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
       luaK_codek(fs, reg, luaK_intK(fs, e->u.ival));
       break;
     }
-	// µ±Ò»¸ö±äÁ¿ÀàÐÍÊÇÖØ¶¨ÏòÊ±£¬¸ù¾Ýreg²ÎÊýÀ´Ð´ÈëÕâ¸öÖ¸ÁîµÄ²ÎÊýA ¡£ÔÚÏÂÃæµÄ´úÂëÖÐ£¬¾ÍÊÇ
-	// ¸ù¾Ý´«ÈËµÄreg²ÎÊý£¬Ò²¾ÍÊÇ»ñÈ¡µ½È«¾Ö±äÁ¿Ö®ºó´æ·ÅµÄ¼Ä´æÆ÷µØÖ·£¬À´ÖØÐÂ»ØÌîµ½
-	// Ö¸ÁîµÄA²ÎÊýÖÐ¡£
+	// å½“ä¸€ä¸ªå˜é‡ç±»åž‹æ˜¯é‡å®šå‘æ—¶ï¼Œæ ¹æ®regå‚æ•°æ¥å†™å…¥è¿™ä¸ªæŒ‡ä»¤çš„å‚æ•°A ã€‚åœ¨ä¸‹é¢çš„ä»£ç ä¸­ï¼Œå°±æ˜¯
+	// æ ¹æ®ä¼ äººçš„regå‚æ•°ï¼Œä¹Ÿå°±æ˜¯èŽ·å–åˆ°å…¨å±€å˜é‡ä¹‹åŽå­˜æ”¾çš„å¯„å­˜å™¨åœ°å€ï¼Œæ¥é‡æ–°å›žå¡«åˆ°
+	// æŒ‡ä»¤çš„Aå‚æ•°ä¸­ã€‚
     case VRELOCABLE: {
       Instruction *pc = &getinstruction(fs, e);
       SETARG_A(*pc, reg);  /* instruction will put result in 'reg' */
       break;
     }
-    // Èç¹ûÒ»¸ö±í´ïÊ½ÀàÐÍÊÇVNONRELOC £¬Ò²¾ÍÊÇ²»ÐèÒªÖØ¶¨Î»£¬ÄÇÃ´Ö±½ÓÉú³ÉMOVEÖ¸ÁîÀ´Íê³É±äÁ¿µÄ¸³Öµ¡£
+    // å¦‚æžœä¸€ä¸ªè¡¨è¾¾å¼ç±»åž‹æ˜¯VNONRELOC ï¼Œä¹Ÿå°±æ˜¯ä¸éœ€è¦é‡å®šä½ï¼Œé‚£ä¹ˆç›´æŽ¥ç”ŸæˆMOVEæŒ‡ä»¤æ¥å®Œæˆå˜é‡çš„èµ‹å€¼ã€‚
     case VNONRELOC: {
       if (reg != e->u.info)
         luaK_codeABC(fs, OP_MOVE, reg, e->u.info, 0);
@@ -749,15 +749,15 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
 ** lists) is in next available register.
 */
 void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
-	// ¸ù¾Ý±äÁ¿ËùÔÚµÄ²»Í¬×÷ÓÃÓò£¨ local, global, upvalue )À´¾ö¶¨Õâ¸ö±äÁ¿ÊÇ·ñÐèÒªÖØ¶¨Ïò¡£
+	// æ ¹æ®å˜é‡æ‰€åœ¨çš„ä¸åŒä½œç”¨åŸŸï¼ˆ local, global, upvalue )æ¥å†³å®šè¿™ä¸ªå˜é‡æ˜¯å¦éœ€è¦é‡å®šå‘ã€‚
   luaK_dischargevars(fs, e);
   freeexp(fs, e);
-  // µ÷ÓÃluaK_reserveregs º¯Êý£¬·ÖÅä¿ÉÓÃµÄº¯Êý¼Ä´æÆ÷¿Õ¼ä£¬µÃµ½Õâ¸ö¿Õ¼ä¶ÔÓ¦µÄ¼Ä´æÆ÷
-  // Ë÷Òý¡£ÓÐÁË¿Õ¼ä£¬²ÅÄÜ´æ´¢±äÁ¿¡£
+  // è°ƒç”¨luaK_reserveregs å‡½æ•°ï¼Œåˆ†é…å¯ç”¨çš„å‡½æ•°å¯„å­˜å™¨ç©ºé—´ï¼Œå¾—åˆ°è¿™ä¸ªç©ºé—´å¯¹åº”çš„å¯„å­˜å™¨
+  // ç´¢å¼•ã€‚æœ‰äº†ç©ºé—´ï¼Œæ‰èƒ½å­˜å‚¨å˜é‡ã€‚
   luaK_reserveregs(fs, 1);
-  // µ÷ÓÃexp2regº¯Êý£¬ÕæÕýÍê³É°Ñ±í´ïÊ½µÄÊý¾Ý·ÅÈë¼Ä´æÆ÷¿Õ¼äµÄ¹¤×÷¡£ÔÚÕâ¸öº¯ÊýÖÐ£¬×î
-  // ÖÕÓÖ»áµ÷ÓÃdischarge2reg º¯Êý£¬Õâ¸öº¯ÊýÊ½¸ù¾Ý²»Í¬µÄ±í´ïÊ½ÀàÐÍ£¨ NIL £¬²¼¶û±í´ïÊ½£¬
-  // Êý×ÖµÈ£©À´Éú³É´æÈ¡±í´ïÊ½µÄÖµµ½¼Ä´æÆ÷µÄ×Ö½ÚÂë¡£
+  // è°ƒç”¨exp2regå‡½æ•°ï¼ŒçœŸæ­£å®ŒæˆæŠŠè¡¨è¾¾å¼çš„æ•°æ®æ”¾å…¥å¯„å­˜å™¨ç©ºé—´çš„å·¥ä½œã€‚åœ¨è¿™ä¸ªå‡½æ•°ä¸­ï¼Œæœ€
+  // ç»ˆåˆä¼šè°ƒç”¨discharge2reg å‡½æ•°ï¼Œè¿™ä¸ªå‡½æ•°å¼æ ¹æ®ä¸åŒçš„è¡¨è¾¾å¼ç±»åž‹ï¼ˆ NIL ï¼Œå¸ƒå°”è¡¨è¾¾å¼ï¼Œ
+  // æ•°å­—ç­‰ï¼‰æ¥ç”Ÿæˆå­˜å–è¡¨è¾¾å¼çš„å€¼åˆ°å¯„å­˜å™¨çš„å­—èŠ‚ç ã€‚
   exp2reg(fs, e, fs->freereg - 1);
 }
 
@@ -1011,9 +1011,9 @@ void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
-// Èç¹ûÕ¹¿ª»áÒý·¢´íÎó£¬Ôò·µ»Ø false¡£
-// °´Î»ÔËËãÐèÒª¿É×ª»»ÎªÕûÊýµÄ²Ù×÷Êý£»
-// ³ý·¨ÔËËã²»ÄÜÓÐ 0 ×÷Îª³ýÊý¡£
+// å¦‚æžœå±•å¼€ä¼šå¼•å‘é”™è¯¯ï¼Œåˆ™è¿”å›ž falseã€‚
+// æŒ‰ä½è¿ç®—éœ€è¦å¯è½¬æ¢ä¸ºæ•´æ•°çš„æ“ä½œæ•°ï¼›
+// é™¤æ³•è¿ç®—ä¸èƒ½æœ‰ 0 ä½œä¸ºé™¤æ•°ã€‚
 static int validop (int op, TValue *v1, TValue *v2) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
@@ -1021,10 +1021,10 @@ static int validop (int op, TValue *v1, TValue *v2) {
       lua_Integer i;
       return (tointeger(v1, &i) && tointeger(v2, &i));
     }
-    // ³ý·¨²»ÄÜÓÐ0×÷Îª³ýÊý
+    // é™¤æ³•ä¸èƒ½æœ‰0ä½œä¸ºé™¤æ•°
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
       return (nvalue(v2) != 0);
-      // ÆäËûÇé¿ö¶¼ÊÇºÏ·¨µÄ
+      // å…¶ä»–æƒ…å†µéƒ½æ˜¯åˆæ³•çš„
     default: return 1;  /* everything else is valid */
   }
 }
@@ -1034,12 +1034,12 @@ static int validop (int op, TValue *v1, TValue *v2) {
 ** Try to "constant-fold" an operation; return 1 iff successful.
 ** (In this case, 'e1' has the final result.)
 */
-// ³¢ÊÔ³£Á¿Õ¹¿ªÒ»¸ö±í´ïÊ½£¬Èç¹û³É¹¦¾Í·µ»Ø1
-// (ÔÚÕâÖÖÇé¿öÏÂ£¬'e1'ÓÐ×îºóµÄ½á¹û)
+// å°è¯•å¸¸é‡å±•å¼€ä¸€ä¸ªè¡¨è¾¾å¼ï¼Œå¦‚æžœæˆåŠŸå°±è¿”å›ž1
+// (åœ¨è¿™ç§æƒ…å†µä¸‹ï¼Œ'e1'æœ‰æœ€åŽçš„ç»“æžœ)
 static int constfolding (FuncState *fs, int op, expdesc *e1,
                                                 const expdesc *e2) {
   TValue v1, v2, res;
-  // Á½¸ö±äÁ¿ÊÇ·ñÄÜ×ª»¯³ÉÊý×Ö£¬²Ù×÷·ûÊÇ·ñ¿ÉÓÃ
+  // ä¸¤ä¸ªå˜é‡æ˜¯å¦èƒ½è½¬åŒ–æˆæ•°å­—ï¼Œæ“ä½œç¬¦æ˜¯å¦å¯ç”¨
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
   luaO_arith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */
