@@ -214,8 +214,15 @@ static Instruction *getjumpcontrol (FuncState *fs, int pc) {
 ** register. Otherwise, change instruction to a simple 'TEST' (produces
 ** no register value)
 */
+// 修正TESTSET指令的目标寄存器。
+// 如果位置“节点”的指令不是TESTSET，则返回 0（“fails”）。
+// 否则，如果 'reg' 不是 'NO_REG'，则将其设置为目标寄存器。 
+// 否则，将指令更改为简单的“TEST”（不产生寄存器值）
 static int patchtestreg (FuncState *fs, int node, int reg) {
   Instruction *i = getjumpcontrol(fs, node);
+  // 在跳转指令不是紧跟在OP_TESTSET指令后面的情况下， patchtestreg 返回0
+  // 这里的reg是需要赋值的目的寄存器地址，也就是OP_TESTSET指令中的参数A ，
+  // 当这个值有效并且不等于参数B时，直接使用这个值赋值给OP_TESTSET指令的参数A 。
   if (GET_OPCODE(*i) != OP_TESTSET)
     return 0;  /* cannot patch other instructions */
   if (reg != NO_REG && reg != GETARG_B(*i))
@@ -223,6 +230,8 @@ static int patchtestreg (FuncState *fs, int node, int reg) {
   else {
      /* no register to put value or register already has the value;
         change instruction to simple test */
+	// 就是没有寄存器进行赋值，或者寄存器中已经存在值（参数A与参数B 相等的情况下），
+	// 此时将原先的OP_TESTSET指令修改为OP TEST指令
     *i = CREATE_ABC(OP_TEST, GETARG_B(*i), 0, GETARG_C(*i));
   }
   return 1;
@@ -245,6 +254,8 @@ static void removevalues (FuncState *fs, int list) {
 */
 // 遍历所有的列表，修复他们的目标地址和寄存器：
 // tests跳转到'vtarget'的值（并将它们的值放入'reg'中），否则tests调整到'dtarget'
+// patchlistaux 函数中的vtarget 指的是value target ，表示此时所需的非布尔类型值已经
+// 在reg 寄存器中，此时只需要使用final ，也就是表达式的下一个指令地址对跳转地址进行回填；
 static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
                           int dtarget) {
     // 遍历跳转列表
@@ -252,6 +263,7 @@ static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
       // 先暂时保存下一个跳转列表项
     int next = getjump(fs, list);
     // 回填地址
+	// ，如果传人的跳转指令是紧跟在OP_TESTSET指令的，就返回l
     if (patchtestreg(fs, list, reg))
       fixjump(fs, list, vtarget);
     else
@@ -704,6 +716,7 @@ static int code_loadbool (FuncState *fs, int A, int b, int jump) {
 ** check whether list has any jump that do not produce a value
 ** or produce an inverted value
 */
+// 检查列表是否有不产生任何值或产生反转值的跳转
 static int need_value (FuncState *fs, int list) {
   for (; list != NO_JUMP; list = getjump(fs, list)) {
     Instruction i = *getjumpcontrol(fs, list);
@@ -908,10 +921,17 @@ static int jumponcond (FuncState *fs, expdesc *e, int cond) {
 /*
 ** Emit code to go through if 'e' is true, jump otherwise.
 */
+// 
 void luaK_goiftrue (FuncState *fs, expdesc *e) {
   int pc;  /* pc of new jump */
+  // 调用函数将传人的表达式解析出来。
   luaK_dischargevars(fs, e);
+  // 当表达式是常量（ VK ）、VKNUM （数字）以及VTRUE （布尔类型的true)时，
+  // 并不需要增加一个跳转指令跳过下一条指令。
   switch (e->k) {
+	// 如果是VJMP ，则说明表达式V是一个逻辑类指令，这时需要将它的跳转
+	// 条件进行颠倒操作。比如，如果前面的表达式是比较变量A是否等于变量B ，那么这里
+	// 会被改写成变量A是否不等于变量B 。
     case VJMP: {  /* condition? */
       negatecondition(fs, e);  /* jump when it is false */
       pc = e->u.info;  /* save jump position */
@@ -921,12 +941,23 @@ void luaK_goiftrue (FuncState *fs, expdesc *e) {
       pc = NO_JUMP;  /* always true; do nothing */
       break;
     }
+
+    // 最后一种是默认情况，此时需要进入jumponcond 函数中，生成针对表达
+    // 式V为false情况的OP_TESTSET指令。注意，这里传入jumponcond 函数中的cond参数是0,
+	// 也就是生成的是表达式为false情况下的指令
     default: {
       pc = jumponcond(fs, e, 0);  /* jump when false */
       break;
     }
   }
+  // 前面根据表达式的不同类型生成跳转指令，该指令的地址返回在局部变量pc中。
+  // 可以看到， pc可能有两种情况，一种为NO_JUMP ，这种情况是表达式恒为true 的’情况，
+  // 其他情况最终都会生成跳转指令，而这些跳转都发生在表达式V为false 的情况。因此，
+  // 这里将返回的pc变量加入到表达式的false list 中。
   luaK_concat(fs, &e->f, pc);  /* insert new jump in false list */
+  // 调用luaK_patchtohere 函数，将表达式的truelist加入到jpc跳转链表中。前
+  // 面已经分析过了，这在生成下一条指令时将下一条指令的pc遍历jpc链表进行回填操作。
+  // 换言之，表达式E为true的情况将跳转到前面生成的跳转指令的下一条指令。
   luaK_patchtohere(fs, e->t);  /* true list jumps to here (to go through) */
   e->t = NO_JUMP;
 }
@@ -935,6 +966,7 @@ void luaK_goiftrue (FuncState *fs, expdesc *e) {
 /*
 ** Emit code to go through if 'e' is false, jump otherwise.
 */
+// 如果“e”为假，则执行执行该代码，否则跳转。
 void luaK_goiffalse (FuncState *fs, expdesc *e) {
   int pc;  /* pc of new jump */
   luaK_dischargevars(fs, e);

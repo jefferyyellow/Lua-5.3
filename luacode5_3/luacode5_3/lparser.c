@@ -1402,7 +1402,9 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   BlockCnt bl;
   FuncState *fs = ls->fs;
   int prep, endfor;
+  // 控制变量，3个
   adjustlocalvars(ls, 3);  /* control variables */
+  // 找到 do 保留字
   checknext(ls, TK_DO);
   prep = isnum ? luaK_codeAsBx(fs, OP_FORPREP, base, NO_JUMP) : luaK_jump(fs);
   enterblock(fs, &bl, 0);  /* scope for declared variables */
@@ -1411,9 +1413,11 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   block(ls);
   leaveblock(fs);  /* end of scope for declared variables */
   luaK_patchtohere(fs, prep);
+  // 数字的for
   if (isnum)  /* numeric for? */
     endfor = luaK_codeAsBx(fs, OP_FORLOOP, base, NO_JUMP);
   else {  /* generic for */
+      // 泛型for
     luaK_codeABC(fs, OP_TFORCALL, base, 0, nvars);
     luaK_fixline(fs, line);
     endfor = luaK_codeAsBx(fs, OP_TFORLOOP, base + 2, NO_JUMP);
@@ -1422,68 +1426,90 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   luaK_fixline(fs, line);
 }
 
-
+// 数字类for循环指令的处理代码
 static void fornum (LexState *ls, TString *varname, int line) {
   /* fornum -> NAME = exp1,exp1[,exp1] forbody */
   FuncState *fs = ls->fs;
   int base = fs->freereg;
+  // 三个变量：循环子，循环条件限制，和步长
   new_localvarliteral(ls, "(for index)");
   new_localvarliteral(ls, "(for limit)");
   new_localvarliteral(ls, "(for step)");
+  // 新的局部变量
   new_localvar(ls, varname);
   checknext(ls, '=');
+  // 初始化值
   exp1(ls);  /* initial value */
   checknext(ls, ',');
+  // 限制值
   exp1(ls);  /* limit */
+  // 如果有步长得到步长
   if (testnext(ls, ','))
     exp1(ls);  /* optional step */
   else {  /* default step = 1 */
+      // 默认步长为1
     luaK_codek(fs, fs->freereg, luaK_intK(fs, 1));
     luaK_reserveregs(fs, 1);
   }
+  // 循环体
   forbody(ls, base, line, 1, 1);
 }
 
-
+// 泛型循环的处理函数在函数for list中：
 static void forlist (LexState *ls, TString *indexname) {
   /* forlist -> NAME {,NAME} IN explist forbody */
   FuncState *fs = ls->fs;
   expdesc e;
+  // 生成器，状态和控制，
   int nvars = 4;  /* gen, state, control, plus at least one declared var */
   int line;
   int base = fs->freereg;
   /* create control variables */
+  // 创建控制变量
   new_localvarliteral(ls, "(for generator)");
   new_localvarliteral(ls, "(for state)");
   new_localvarliteral(ls, "(for control)");
   /* create declared variables */
   new_localvar(ls, indexname);
+  // 解析列表
   while (testnext(ls, ',')) {
     new_localvar(ls, str_checkname(ls));
     nvars++;
   }
+  // 找到in
   checknext(ls, TK_IN);
   line = ls->linenumber;
   adjust_assign(ls, 3, explist(ls, &e), &e);
+  // 用来调用发生器的额外的空间
   luaK_checkstack(fs, 3);  /* extra space to call generator */
+  // for循环体
   forbody(ls, base, line, nvars - 3, 0);
 }
 
-
+// 处理for循环的人口函数，只要程序解析到关键字for就会进入这个函数
 static void forstat (LexState *ls, int line) {
   /* forstat -> FOR (fornum | forlist) END */
   FuncState *fs = ls->fs;
   TString *varname;
   BlockCnt bl;
+  // 进入for块
   enterblock(fs, &bl, 1);  /* scope for loop and control variables */
+  // 跳过for关键字
   luaX_next(ls);  /* skip 'for' */
+  // 得到第一个变量名
   varname = str_checkname(ls);  /* first variable name */
+  // 
   switch (ls->t.token) {
+    // for的数字型的处理
     case '=': fornum(ls, varname, line); break;
+    // for的列表型的处理
     case ',': case TK_IN: forlist(ls, varname); break;
+    // 其他情况报错
     default: luaX_syntaxerror(ls, "'=' or 'in' expected");
   }
+  // 是否匹配for的结尾部分
   check_match(ls, TK_END, TK_FOR, line);
+  // 离开for循环块
   leaveblock(fs);  /* loop scope ('break' jumps to this point) */
 }
 
