@@ -91,7 +91,7 @@ typedef struct GCObject GCObject;
 // 所有需要GC（垃圾回收）对象的公共头（以宏的形式，需要包含在其他对象中）
 // next：   指向下一个GC链表的成员
 // tt：     表示数据的类型
-// marked:  GC相关的标记位
+// marked:  GC相关的标记字段,用于存储前面提到的几种颜色
 #define CommonHeader	GCObject *next; lu_byte tt; lu_byte marked
 
 

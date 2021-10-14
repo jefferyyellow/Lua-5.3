@@ -1,4 +1,4 @@
-/*
+﻿/*
 ** $Id: lgc.h,v 2.91.1.1 2017/04/19 17:39:34 roberto Exp $
 ** Garbage Collector
 ** See Copyright Notice in lua.h
@@ -75,29 +75,34 @@
 
 
 /* Layout for bit use in 'marked' field: */
-#define WHITE0BIT	0  /* object is white (type 0) */
-#define WHITE1BIT	1  /* object is white (type 1) */
-#define BLACKBIT	2  /* object is black */
-#define FINALIZEDBIT	3  /* object has been marked for finalization */
+#define WHITE0BIT	0  // 对象为白色类型0 /* object is white (type 0) */
+#define WHITE1BIT	1  // 对象为白色类型1 /* object is white (type 1) */
+#define BLACKBIT	2  // 对象为黑色 /* object is black */
+// FINALIZEDBIT 用于标记没有被引用需要回收的udata 。udata的处理与其他数据类型不同，由于它是用户传人的数据，它的回收可能会调用用户注册的GC 函数，
+#define FINALIZEDBIT	3	// 对象被标记为可以回收的 //  /* object has been marked for finalization */
 /* bit 7 is currently used by tests (luaL_checkmemory) */
 
+// 所有的白色的位与在一起
 #define WHITEBITS	bit2mask(WHITE0BIT, WHITE1BIT)
 
-
+// 是否是白色
 #define iswhite(x)      testbits((x)->marked, WHITEBITS)
+// 是否是黑色
 #define isblack(x)      testbit((x)->marked, BLACKBIT)
+// 是否是灰色（不是白色也不是黑色）
 #define isgray(x)  /* neither white nor black */  \
 	(!testbits((x)->marked, WHITEBITS | bitmask(BLACKBIT)))
-
+// 是否是可以回收的了
 #define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
-
+// otherwhite用来判断当前的白色用于回收
 #define otherwhite(g)	((g)->currentwhite ^ WHITEBITS)
 #define isdeadm(ow,m)	(!(((m) ^ WHITEBITS) & (ow)))
 #define isdead(g,v)	isdeadm(otherwhite(g), (v)->marked)
-
+// 将当前的白色转换成另外一种
 #define changewhite(x)	((x)->marked ^= WHITEBITS)
+// 设置成黑色
 #define gray2black(x)	l_setbit((x)->marked, BLACKBIT)
-
+// 当前的白色
 #define luaC_white(g)	cast(lu_byte, (g)->currentwhite & WHITEBITS)
 
 

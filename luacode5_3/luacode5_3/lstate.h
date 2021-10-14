@@ -161,23 +161,39 @@ typedef struct global_State {
   stringtable strt;  /* hash table for strings */
   TValue l_registry;
   unsigned int seed;  /* randomized seed for hashes */
+  // 当前的白色见global_State 中的currentwhite，而otherwhite宏用于表示非当前GC将要回收的白色类型。
   lu_byte currentwhite;
+  // 当前gc的状态，GCS p ause （暂停阶段） 、GCSpropagate（传播阶段，用于遍历灰色节点检查对象的引用情况）、
+  // GCSsweepstring （字符串回收阶段）, GCSsweep （回收阶段，用于对除了字符串之外的所有其他数据类型进行回收）和
+  // GCSfinalize （终止阶段） 。
   lu_byte gcstate;  /* state of garbage collector */
+  // 
   lu_byte gckind;  /* kind of GC running */
   lu_byte gcrunning;  /* true if GC is running */
+  // 存放待GC对象的链表，所有对象创建之后都会放入该链表中。
   GCObject *allgc;  /* list of all collectable objects */
+  // 待处理的回收数据都存放在rootgc链表中，由于回收阶段不是一次性全部回收这个链表的所有数据，
+  // 所以使用这个变量来保存当前回收的位置，下一次从这个位置开始继续回收操作。
   GCObject **sweepgc;  /* current position of sweep in list */
+  // 
   GCObject *finobj;  /* list of collectable objects with finalizers */
+  // 存放灰色节点的链表。
   GCObject *gray;  /* list of gray objects */
+  // 存放需要一次性扫描处理的灰色节点链表，也就是说，这个链表上所有数据的处理需要一步到位，不能被打断。
   GCObject *grayagain;  /* list of objects to be traversed atomically */
+  // 存放弱表的链表。
   GCObject *weak;  /* list of tables with weak values */
   GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
   GCObject *allweak;  /* list of all-weak tables */
   GCObject *tobefnz;  /* list of userdata to be GC */
+  // 不能被gc的obj列表
   GCObject *fixedgc;  /* list of objects not to be collected */
   struct lua_State *twups;  /* list of threads with open upvalues */
+  // 每一个GC步骤中，多少个finalizers被调用
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
+  // 用于控制下一轮GC开始的时机。
   int gcpause;  /* size of pause between successive GCs */
+  // 控制GC 的回收速度。
   int gcstepmul;  /* GC 'granularity' */
   lua_CFunction panic;  /* to be called in unprotected errors */
   struct lua_State *mainthread;
