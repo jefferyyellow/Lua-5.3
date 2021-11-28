@@ -94,6 +94,7 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
       luaD_throw(L, LUA_ERRMEM);
   }
   lua_assert((nsize == 0) == (newblock == NULL));
+  // 将新增使用内存量, 加入到global_State中的GCdebt字段中.
   g->GCdebt = (g->GCdebt + nsize) - realosize;
   return newblock;
 }

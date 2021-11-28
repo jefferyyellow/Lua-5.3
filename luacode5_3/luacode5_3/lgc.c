@@ -208,11 +208,16 @@ void luaC_fix (lua_State *L, GCObject *o) {
 ** create a new collectable object (with given type and size) and link
 ** it to 'allgc' list.
 */
+// 创建一个新的GC对象(给定的类型和大小)并且链接在allgc列表中，
 GCObject *luaC_newobj (lua_State *L, int tt, size_t sz) {
   global_State *g = G(L);
+  // 分配内存
   GCObject *o = cast(GCObject *, luaM_newobject(L, novariant(tt), sz));
+  // 将对象置为白色
   o->marked = luaC_white(g);
+  // 设置对象的类型
   o->tt = tt;
+  // 挂接到gc列表
   o->next = g->allgc;
   g->allgc = o;
   return o;
@@ -1048,6 +1053,7 @@ static lu_mem sweepstep (lua_State *L, global_State *g,
 static lu_mem singlestep (lua_State *L) {
   global_State *g = G(L);
   switch (g->gcstate) {
+      // 从根对象开始标记，将白色置为灰色，并加入到灰色链表中
     case GCSpause: {
       g->GCmemtrav = g->strt.size * sizeof(GCObject*);
       restartcollection(g);
@@ -1129,6 +1135,7 @@ static l_mem getdebt (global_State *g) {
 /*
 ** performs a basic GC step when collector is running
 */
+// 当收集器运行时执行基本的 GC 步骤
 void luaC_step (lua_State *L) {
   global_State *g = G(L);
   l_mem debt = getdebt(g);  /* GC deficit (be paid now) */

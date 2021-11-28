@@ -36,13 +36,21 @@
 /*
 ** Possible states of the Garbage Collector
 */
+// 传播阶段：标记对象
 #define GCSpropagate	0
+// 原子阶段：一次性标记
 #define GCSatomic	1
+// 清扫allgc
 #define GCSswpallgc	2
+// 清扫finobj
 #define GCSswpfinobj	3
+// 清扫tobefnz
 #define GCSswptobefnz	4
+// 清扫结束
 #define GCSswpend	5
+// 调用终结函数(__gc)
 #define GCScallfin	6
+// 暂停阶段
 #define GCSpause	7
 
 

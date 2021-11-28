@@ -150,32 +150,49 @@ typedef struct CallInfo {
 */
 // 全局状态，所有的线程都共享该状态
 typedef struct global_State {
-	// 分配内存的函数
+  // Lua的全局内存分配器，用户可以替换成自己的
   lua_Alloc frealloc;  /* function to reallocate memory */
+  // 分配器的userdata
   void *ud;         /* auxiliary data to 'frealloc' */
+  // 当前分配的内存大小
   l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
+  // 用于在单次GC之前保存待回收的数据大小。
   l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
+  // GC遍历的内存
   lu_mem GCmemtrav;  /* memory traversed by the GC */
+  // 对使用中的非垃圾内存的估计(一个估计值，用于保存实际在用的内存大小。)
   lu_mem GCestimate;  /* an estimate of the non-garbage memory in use */
-  // 字符串的hash表
+  // 字符串的hash表, 全局字符串表，几乎每个语言都会对字符串做池化，作成immutable的，Lua的字符串分短字符串和长字符串
   stringtable strt;  /* hash table for strings */
+  // 注册表管理全局数据
   TValue l_registry;
+  // 哈希算法的随机种子
   unsigned int seed;  /* randomized seed for hashes */
   // 当前的白色见global_State 中的currentwhite，而otherwhite宏用于表示非当前GC将要回收的白色类型。
   lu_byte currentwhite;
-  // 当前gc的状态，GCS p ause （暂停阶段） 、GCSpropagate（传播阶段，用于遍历灰色节点检查对象的引用情况）、
-  // GCSsweepstring （字符串回收阶段）, GCSsweep （回收阶段，用于对除了字符串之外的所有其他数据类型进行回收）和
-  // GCSfinalize （终止阶段） 。
+
+  //#define GCSpropagate    0       // 传播阶段：标记对象
+  //#define GCSatomic   1           // 原子阶段：一次性标记
+  //#define GCSswpallgc 2           // 清扫allgc
+  //#define GCSswpfinobj    3       // 清扫finobj
+  //#define GCSswptobefnz   4       // 清扫tobefnz
+  //#define GCSswpend   5           // 清扫结束
+  //#define GCScallfin  6           // 调用终结函数(__gc)
+  //#define GCSpause    7           // 停止
+  // 当前gc的状态，
   lu_byte gcstate;  /* state of garbage collector */
-  // 
+  //#define KGC_NORMAL	0
+  //#define KGC_EMERGENCY	1	/* gc was forced by an allocation failure */
+  // GC运行的类型
   lu_byte gckind;  /* kind of GC running */
+  // GC是否运行
   lu_byte gcrunning;  /* true if GC is running */
   // 存放待GC对象的链表，所有对象创建之后都会放入该链表中。
   GCObject *allgc;  /* list of all collectable objects */
   // 待处理的回收数据都存放在rootgc链表中，由于回收阶段不是一次性全部回收这个链表的所有数据，
   // 所以使用这个变量来保存当前回收的位置，下一次从这个位置开始继续回收操作。
   GCObject **sweepgc;  /* current position of sweep in list */
-  // 
+  // 带有终结器的可收集对象列表
   GCObject *finobj;  /* list of collectable objects with finalizers */
   // 存放灰色节点的链表。
   GCObject *gray;  /* list of gray objects */
@@ -184,10 +201,13 @@ typedef struct global_State {
   // 存放弱表的链表。
   GCObject *weak;  /* list of tables with weak values */
   GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
+  // 
   GCObject *allweak;  /* list of all-weak tables */
+  // 要进行GC的用户数据列表
   GCObject *tobefnz;  /* list of userdata to be GC */
   // 不能被gc的obj列表
   GCObject *fixedgc;  /* list of objects not to be collected */
+  // 闭包了当前线程变量的其他线程列表
   struct lua_State *twups;  /* list of threads with open upvalues */
   // 每一个GC步骤中，多少个finalizers被调用
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
@@ -195,14 +215,19 @@ typedef struct global_State {
   int gcpause;  /* size of pause between successive GCs */
   // 控制GC 的回收速度。
   int gcstepmul;  /* GC 'granularity' */
+  // 全局错误处理响应点(处理不受保护的错误)
   lua_CFunction panic;  /* to be called in unprotected errors */
+  // 主线程
   struct lua_State *mainthread;
   // 指向版本号的指针
   const lua_Number *version;  /* pointer to version number */
+  // 内存错误信息
   TString *memerrmsg;  /* memory-error message */
-  // 元方法的名字数组
+  // 元方法的名字数组,metatable的预定义方法名字数组，tm是tag method的缩写
   TString *tmname[TM_N];  /* array with tag-method names */
+  // 每个基本类型一个metatable，注意table、userdata等则是每个实例一个metatable。metatable+tag method可以说是整个Lua最重要的Hook机制。
   struct Table *mt[LUA_NUMTAGS];  /* metatables for basic types */
+  // Lua5.3.4的实现中对于长字符串是单独存储,并使用strcache来缓存,对于短字符串还是像原来一样存储在stringtable中
   TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
 } global_State;
 
