@@ -95,6 +95,8 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
   }
   lua_assert((nsize == 0) == (newblock == NULL));
   // 将新增使用内存量, 加入到global_State中的GCdebt字段中.
+  // GCdebt就是在不断的统计释放与分配的内存。当新增分配内存时，GCdebt值将会增加，即GC需要释放的内存增加；
+  // 当释放内存时，GCdebt将会减少，即GC需要释放的内存减少。
   g->GCdebt = (g->GCdebt + nsize) - realosize;
   return newblock;
 }

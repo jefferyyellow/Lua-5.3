@@ -625,6 +625,7 @@ typedef struct Table {
 /*
 ** (address of) a fixed nil value
 */
+// 一个固定的nil值的地址
 #define luaO_nilobject		(&luaO_nilobject_)
 
 

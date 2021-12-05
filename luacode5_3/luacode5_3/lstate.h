@@ -154,9 +154,9 @@ typedef struct global_State {
   lua_Alloc frealloc;  /* function to reallocate memory */
   // 分配器的userdata
   void *ud;         /* auxiliary data to 'frealloc' */
-  // 当前分配的内存大小
+  // 当前使用的内存大小(为实际内存分配器所分配的内存与GCdebt的差值)
   l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
-  // 用于在单次GC之前保存待回收的数据大小。
+  // 用于在单次GC之前保存待回收的数据大小。（需要回收的内存数量。）
   l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
   // GC遍历的内存
   lu_mem GCmemtrav;  /* memory traversed by the GC */
@@ -188,30 +188,50 @@ typedef struct global_State {
   // GC是否运行
   lu_byte gcrunning;  /* true if GC is running */
   // 存放待GC对象的链表，所有对象创建之后都会放入该链表中。
+  // allgc 所有没有被标记为自带终结器的对象链表    
   GCObject *allgc;  /* list of all collectable objects */
   // 待处理的回收数据都存放在rootgc链表中，由于回收阶段不是一次性全部回收这个链表的所有数据，
   // 所以使用这个变量来保存当前回收的位置，下一次从这个位置开始继续回收操作。
   GCObject **sweepgc;  /* current position of sweep in list */
   // 带有终结器的可收集对象列表
+  // 新增元素的地方:
+  // 1)第一次设置table的元表且元表中含有__gc方法, 此table对象会从allgc链表中移除
+  // 2)第一次设置userdata的元表且元表中含有__gc方法时, 此userdata对象会从allgc链表中移除
   GCObject *finobj;  /* list of collectable objects with finalizers */
-  // 存放灰色节点的链表。
+  // 存放灰色节点的链表。gray 常规灰色等待被访问对象链表
   GCObject *gray;  /* list of gray objects */
   // 存放需要一次性扫描处理的灰色节点链表，也就是说，这个链表上所有数据的处理需要一步到位，不能被打断。
+  // grayagain 在原子阶段必须被重新访问的灰色对象链表
+  // 包括：在白色barrier中的黑色对象;在繁殖阶段的所有类型弱表;所有线程
+  //  新增元素的地方:
+  //  1)繁殖阶段遍历弱值表时
+  //  2)繁殖阶段遍历弱key表时
+  //  3)遍历线程时
+  //  4)将黑色结点变灰色向后barrier时
   GCObject *grayagain;  /* list of objects to be traversed atomically */
-  // 存放弱表的链表。
+  // 存放弱表的链表。weak 弱值表对象链表
+  //新增元素的地方:
+  //  1)非繁殖阶段遍历弱值表含有可能需要清理的值时
   GCObject *weak;  /* list of tables with weak values */
+  // ephemeron 蜉蝣对象(弱key表)链表,含有白色->白色结点
+  // 新增元素的地方:
+  // 1)非繁殖阶段遍历弱key表时有结点的key和value都为白色
   GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
-  // 
+  // allweak 有弱键和/或弱值将被清理的表
+  //新增元素的地方:
+  //  1)非繁殖阶段遍历弱key表时含有可能需要清理的key且其value标记过
+  //  2)遍历表时表是弱key且弱值型
   GCObject *allweak;  /* list of all-weak tables */
   // 要进行GC的用户数据列表
+  // tobefnz 将要被释放的对象链表  
   GCObject *tobefnz;  /* list of userdata to be GC */
-  // 不能被gc的obj列表
+  // 不能被gc的obj列表，fixedgc 不会被回收的对象链表
   GCObject *fixedgc;  /* list of objects not to be collected */
-  // 闭包了当前线程变量的其他线程列表
+  // 拥有open upvalues的线程列表
   struct lua_State *twups;  /* list of threads with open upvalues */
-  // 每一个GC步骤中，多少个finalizers被调用
+  // 每一个GC步骤中，最多多少个finalizers被调用
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
-  // 用于控制下一轮GC开始的时机。
+  // 用于控制下一轮GC开始的时机。gcpause控制每次完整GC间的间隔(即完整GC频率)
   int gcpause;  /* size of pause between successive GCs */
   // 控制GC 的回收速度。
   int gcstepmul;  /* GC 'granularity' */
@@ -314,8 +334,9 @@ union GCUnion {
 
 
 /* actual number of total bytes allocated */
+// 得到实际分配的总字节数
 #define gettotalbytes(g)	cast(lu_mem, (g)->totalbytes + (g)->GCdebt)
-
+// 将 GCdebt 设置为保持该值的新值
 LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);
 LUAI_FUNC void luaE_freethread (lua_State *L, lua_State *L1);
 LUAI_FUNC CallInfo *luaE_extendCI (lua_State *L);

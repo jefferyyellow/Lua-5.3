@@ -10,15 +10,16 @@
 
 #include "lobject.h"
 
-
+// 得到C闭包的大小
 #define sizeCclosure(n)	(cast(int, sizeof(CClosure)) + \
                          cast(int, sizeof(TValue)*((n)-1)))
-
+// 得到Lua闭包的大小
 #define sizeLclosure(n)	(cast(int, sizeof(LClosure)) + \
                          cast(int, sizeof(TValue *)*((n)-1)))
 
 
 /* test whether thread is in 'twups' list */
+// 测试线程是否在 'twups' 列表中
 #define isintwups(L)	(L->twups != L)
 
 

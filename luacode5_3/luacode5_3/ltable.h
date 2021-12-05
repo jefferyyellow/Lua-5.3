@@ -16,12 +16,14 @@
 
 
 /* 'const' to avoid wrong writings that can mess up field 'next' */
+// 'const' 以避免错误的写作，这可能会弄乱字段 'next'
 #define gkey(n)		cast(const TValue*, (&(n)->i_key.tvk))
 
 /*
 ** writable version of 'gkey'; allows updates to individual fields,
 ** but not to the whole (which has incompatible type)
 */
+// gkey'的可写版本；允许更新单个字段而不是整个
 #define wgkey(n)		(&(n)->i_key.nk)
 
 // 清除掉缓存元方法是否存在的标记

@@ -105,12 +105,15 @@ static unsigned int makeseed (lua_State *L) {
 ** set GCdebt to a new value keeping the value (totalbytes + GCdebt)
 ** invariant (and avoiding underflows in 'totalbytes')
 */
+// 将 GCdebt 设置为保持该值的新值 (totalbytes + GCdebt)不变（并避免“总字节数”中的下溢）
 // 将GCdebt设置成新的值，totalbytes + GCdebt不变，并防止debt下溢
 void luaE_setdebt (global_State *g, l_mem debt) {
+    // 得到所有的内存
   l_mem tb = gettotalbytes(g);
   lua_assert(tb > 0);
   if (debt < tb - MAX_LMEM)
     debt = tb - MAX_LMEM;  /* will make 'totalbytes == MAX_LMEM' */
+  // 保持总和不变
   g->totalbytes = tb - debt;
   g->GCdebt = debt;
 }

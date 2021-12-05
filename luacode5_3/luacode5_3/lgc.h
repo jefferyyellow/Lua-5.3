@@ -24,14 +24,18 @@
 ** is not being enforced (e.g., sweep phase).
 */
 
-
-
 /* how much to allocate before next GC step */
+// 在下一个 GC 步骤之前分配多少
 #if !defined(GCSTEPSIZE)
 /* ~100 small strings */
+// 100个短字符串
 #define GCSTEPSIZE	(cast_int(100 * sizeof(TString)))
 #endif
 
+// Lua可回收对象有三种颜色, 白色、灰色和黑色.
+// 白色表示没有被标记的对象, 白色有两种每次完整GC后切换;
+// 灰色表示标记过的对象, 但可能引用未标记的对象;
+// 黑色表示标记过的对象, 并且它引用的对象都标记过;
 
 /*
 ** Possible states of the Garbage Collector
@@ -72,6 +76,7 @@
 /*
 ** some useful bit tricks
 */
+// 
 #define resetbits(x,m)		((x) &= cast(lu_byte, ~(m)))
 #define setbits(x,m)		((x) |= (m))
 #define testbits(x,m)		((x) & (m))
@@ -120,13 +125,15 @@
 ** 'condchangemem' is used only for heavy tests (forcing a full
 ** GC cycle on every opportunity)
 */
+// 当GCdebt变成正数时，进行一次收集，'pre'/'pos'宏允许一些需要的调整。
+// 宏 'condchangemem'只用于重的测试（每一次机会强制一个完整的GC循环）
 #define luaC_condGC(L,pre,pos) \
 	{ if (G(L)->GCdebt > 0) { pre; luaC_step(L); pos;}; \
 	  condchangemem(L,pre,pos); }
 
 /* more often than not, 'pre'/'pos' are empty */
+// 通常情况下，'pre'/'pos'是空的
 #define luaC_checkGC(L)		luaC_condGC(L,(void)0,(void)0)
-
 
 #define luaC_barrier(L,p,v) (  \
 	(iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ?  \
