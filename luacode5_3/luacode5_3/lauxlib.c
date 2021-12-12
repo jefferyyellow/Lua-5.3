@@ -696,7 +696,7 @@ LUALIB_API char *luaL_buffinitsize (lua_State *L, luaL_Buffer *B, size_t sz) {
 /* index of free-list header */
 #define freelist	0
 
-// 针对栈顶的对象，创建并返回一个在索引 t 指向的表中的 引用 （最后会弹出栈顶对象）。
+// 针对栈顶的对象，创建并返回一个在索引 t 指向的表中的引用 （最后会弹出栈顶对象）。
 // 此引用是一个唯一的整数键。 只要你不向表 t 手工添加整数键， luaL_ref 可以保证它返回的键的唯一性。
 // 你可以通过调用 lua_rawgeti(L, t, r) 来找回由 r 引用的对象。 函数 luaL_unref 用来释放一个引用关联的对象
 // 如果栈顶的对象是 nil， luaL_ref 将返回常量 LUA_REFNIL。 常量 LUA_NOREF 可以保证和 luaL_ref 能返回的其它引用值不同。
@@ -706,14 +706,20 @@ LUALIB_API int luaL_ref (lua_State *L, int t) {
     lua_pop(L, 1);  /* remove from stack */
     return LUA_REFNIL;  /* 'nil' has a unique fixed reference */
   }
+  // 得到索引t处的表中freelist索引的值
   t = lua_absindex(L, t);
   lua_rawgeti(L, t, freelist);  /* get first free element */
+  //  ref = t[freelist]把值取出来
   ref = (int)lua_tointeger(L, -1);  /* ref = t[freelist] */
+  // 然后从栈里面移除
   lua_pop(L, 1);  /* remove it from stack */
+
   if (ref != 0) {  /* any free element? */
+    // t[freelist] = t[ref]，相当于将ref从列表中移除了
     lua_rawgeti(L, t, ref);  /* remove it from list */
     lua_rawseti(L, t, freelist);  /* (t[freelist] = t[ref]) */
   }
+  // 没有空闲的元素，就增加一个，然后把索引返回去
   else  /* no free elements */
     ref = (int)lua_rawlen(L, t) + 1;  /* get a new reference */
   lua_rawseti(L, t, ref);
@@ -725,6 +731,7 @@ LUALIB_API int luaL_ref (lua_State *L, int t) {
 LUALIB_API void luaL_unref (lua_State *L, int t, int ref) {
   if (ref >= 0) {
     t = lua_absindex(L, t);
+    // 将ref的空闲块链接进去
 	// t[ref] = t[freelist]
     lua_rawgeti(L, t, freelist);
     lua_rawseti(L, t, ref);  /* t[ref] = t[freelist] */
