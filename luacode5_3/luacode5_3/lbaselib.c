@@ -635,7 +635,11 @@ LUAMOD_API int luaopen_base (lua_State *L) {
   // 将base_funcs注册在全局表中
   luaL_setfuncs(L, base_funcs, 0);
   /* set global _G */
-  // 将全局表中的_G设置为-1
+  // 将全局表_G设置为自己
+  // 也就是_G["_G"]和_G是同一个东西
+  // 可以在lua里面尝试打印：
+  // print(_G)
+  // print(_G["_G"])
   lua_pushvalue(L, -1);
   lua_setfield(L, -2, "_G");
   /* set global _VERSION */

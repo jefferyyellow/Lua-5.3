@@ -565,7 +565,7 @@ static int searcher_preload (lua_State *L) {
   return 1;
 }
 
-
+// 查找加载器
 static void findloader (lua_State *L, const char *name) {
   int i;
   luaL_Buffer msg;  /* to build error message */
@@ -575,15 +575,19 @@ static void findloader (lua_State *L, const char *name) {
     luaL_error(L, "'package.searchers' must be a table");
   /*  iterate over available searchers to find a loader */
   for (i = 1; ; i++) {
+     // 加载器已经为空了
     if (lua_rawgeti(L, 3, i) == LUA_TNIL) {  /* no more searchers? */
       lua_pop(L, 1);  /* remove nil */
       luaL_pushresult(&msg);  /* create error message */
       luaL_error(L, "module '%s' not found:%s", name, lua_tostring(L, -1));
     }
+    // 查找加载器
     lua_pushstring(L, name);
     lua_call(L, 1, 2);  /* call it */
+    // 找到加载器
     if (lua_isfunction(L, -2))  /* did it find a loader? */
       return;  /* module loader found */
+    // 查找器返回错误信息
     else if (lua_isstring(L, -2)) {  /* searcher returned error message? */
       lua_pop(L, 1);  /* remove extra return */
       luaL_addvalue(&msg);  /* concatenate error message */
@@ -595,20 +599,27 @@ static void findloader (lua_State *L, const char *name) {
 
 
 static int ll_require (lua_State *L) {
+  // 得到加载的名字
   const char *name = luaL_checkstring(L, 1);
   lua_settop(L, 1);  /* LOADED table will be at index 2 */
+  // 得到加载表
   lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
   lua_getfield(L, 2, name);  /* LOADED[name] */
+  // 是否已经加载
   if (lua_toboolean(L, -1))  /* is it there? */
     return 1;  /* package is already loaded */
   /* else must load package */
   lua_pop(L, 1);  /* remove 'getfield' result */
+  // 查找loader
   findloader(L, name);
   lua_pushstring(L, name);  /* pass name as argument to module loader */
   lua_insert(L, -2);  /* name is 1st argument (before search data) */
+  // 调用加载函数
   lua_call(L, 2, 1);  /* run loader to load module */
+  // LOADED[name]记录返回值
   if (!lua_isnil(L, -1))  /* non-nil return? */
     lua_setfield(L, 2, name);  /* LOADED[name] = returned value */
+  // 如果返回值为nil，使用true作为结果：LOADED[name] = true
   if (lua_getfield(L, 2, name) == LUA_TNIL) {   /* module set no value? */
     lua_pushboolean(L, 1);  /* use true as result */
     lua_pushvalue(L, -1);  /* extra copy to be returned */
@@ -631,6 +642,7 @@ static int ll_require (lua_State *L) {
 /*
 ** changes the environment variable of calling function
 */
+// 改变调用函数的环境变量
 static void set_env (lua_State *L) {
   lua_Debug ar;
   if (lua_getstack(L, 1, &ar) == 0 ||
@@ -645,6 +657,7 @@ static void set_env (lua_State *L) {
 
 static void dooptions (lua_State *L, int n) {
   int i;
+  // 调用option对应的函数，参数是module
   for (i = 2; i <= n; i++) {
     if (lua_isfunction(L, i)) {  /* avoid 'calling' extra info. */
       lua_pushvalue(L, i);  /* get option (a function) */
@@ -654,35 +667,45 @@ static void dooptions (lua_State *L, int n) {
   }
 }
 
-
+// 模块初始化
 static void modinit (lua_State *L, const char *modname) {
   const char *dot;
+  // 将module._M = module
   lua_pushvalue(L, -1);
   lua_setfield(L, -2, "_M");  /* module._M = module */
+  // module._NAME = modname
   lua_pushstring(L, modname);
   lua_setfield(L, -2, "_NAME");
   dot = strrchr(modname, '.');  /* look for last dot in module name */
   if (dot == NULL) dot = modname;
   else dot++;
   /* set _PACKAGE as package name (full module name minus last part) */
+  // 设置module._PACKAGE = dot - modname
   lua_pushlstring(L, modname, dot - modname);
   lua_setfield(L, -2, "_PACKAGE");
 }
 
-
+// 这个名为xxx 的模块本质上是一个表，这个表存储了这个模块中的所有变量以及函数，它既可以通过
+// _G["xxx"]来访问，也可以通过registry["LOADED"]["XXX"]来访问。
 static int ll_module (lua_State *L) {
   const char *modname = luaL_checkstring(L, 1);
   int lastarg = lua_gettop(L);  /* last parameter */
+  // 得到或者创建一个module表
   luaL_pushmodule(L, modname, 1);  /* get/create module table */
   /* check whether table already has a _NAME field */
+  // module表是否_NAME字段，以此来判断是否初始化
   if (lua_getfield(L, -1, "_NAME") != LUA_TNIL)
     lua_pop(L, 1);  /* table is an initialized module */
   else {  /* no; initialize it */
     lua_pop(L, 1);
+    // 模块初始化
     modinit(L, modname);
   }
   lua_pushvalue(L, -1);
+  // 调用setfenv将该模块对应的环境置空
+  // setfenv将该模块对应的环境置空就是将这个模块分析完毕之后返回的Closure对应的env环境表置空。
   set_env(L);
+  // 出来参数中的函数
   dooptions(L, lastarg);
   return 1;
 }
@@ -690,11 +713,13 @@ static int ll_module (lua_State *L) {
 
 static int ll_seeall (lua_State *L) {
   luaL_checktype(L, 1, LUA_TTABLE);
+  // 如果没有元表，就创建元表
   if (!lua_getmetatable(L, 1)) {
     lua_createtable(L, 0, 1); /* create new metatable */
     lua_pushvalue(L, -1);
     lua_setmetatable(L, 1);
   }
+  // 并将__index指向_G
   lua_pushglobaltable(L);
   lua_setfield(L, -2, "__index");  /* mt.__index = _G */
   return 0;

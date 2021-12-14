@@ -436,9 +436,13 @@ LUA_API void      (lua_setallocf) (lua_State *L, lua_Alloc f, void *ud);
 ** Event masks
 */
 // 事件掩码
+// 在函数被调用时触发
 #define LUA_MASKCALL	(1 << LUA_HOOKCALL)
+// 在函数返回时触发
 #define LUA_MASKRET	(1 << LUA_HOOKRET)
+// 在每执行一行时触发
 #define LUA_MASKLINE	(1 << LUA_HOOKLINE)
+// 每执行count条Lua指令触发一次，这里的count在lua_sethook函数的第三个参数中传人。使用其他hook类型时，该参数无效。
 #define LUA_MASKCOUNT	(1 << LUA_HOOKCOUNT)
 
 typedef struct lua_Debug lua_Debug;  /* activation record */
@@ -469,20 +473,34 @@ LUA_API int (lua_gethookcount) (lua_State *L);
 
 
 struct lua_Debug {
+  // 用于表示触发hook的事件，事件类型就是前面提到的几个宏。
   int event;
+  // 当前所在函数的名
   const char *name;	/* (n) */
+  // name域的含义。可能的取值为：global、local、method、field或者空字符串。空字符串意味着Lua无法找到这个函数名。
   const char *namewhat;	/* (n) 'global', 'local', 'field', 'method' */
+  // 函数类型。如果foo是普通的Lua函数，结果为Lua；如果是C函数，结果为C；如果是Lua的主代码段，结果为main。
   const char *what;	/* (S) 'Lua', 'C', 'main', 'tail' */
+  // 函数的定义位置。如果函数在字符串内被定义（通过loadstring函数）,source就是该字符串，如果函数在文件中被定义，source就是带＠前缀的文件名。
   const char *source;	/* (S) */
+  // 当前所在行号。
   int currentline;	/* (l) */
+  // source中函数被定义处的行号
   int linedefined;	/* (S) */
+  // 该函数最后一行代码在源代码中的行号。
   int lastlinedefined;	/* (S) */
+  // 该函数的UpValue的数量。
   unsigned char nups;	/* (u) number of upvalues */
+  // 该函数参数的数量
   unsigned char nparams;/* (u) number of parameters */
+  // 是否是可变参数
   char isvararg;        /* (u) */
+  // 是否是尾调用
   char istailcall;	/* (t) */
+  // source 的简短版本（ 60个字符以内），对错误信息很有用
   char short_src[LUA_IDSIZE]; /* (S) */
   /* private part */
+  // 激活的函数
   struct CallInfo *i_ci;  /* active function */
 };
 

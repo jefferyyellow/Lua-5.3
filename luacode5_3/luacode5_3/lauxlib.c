@@ -1116,6 +1116,7 @@ LUALIB_API void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
       lua_pushvalue(L, -nup);
 	// 闭包对应着upvalues
     lua_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
+    // 设置到全局表中
     lua_setfield(L, -(nup + 2), l->name);
   }
   // 将原始的nup个upvalues弹出栈
