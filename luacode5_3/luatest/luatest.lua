@@ -8,3 +8,7 @@ else
 	print("biger than 20" );
 end
 print("a µÄÖµÎª:", a);
+
+print('asdf ')
+print(_G)
+print(_G["_G"])

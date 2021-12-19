@@ -96,6 +96,7 @@ typedef struct CallInfo {
   StkId func;  /* function index in the stack */
   // 函数的栈顶
   StkId	top;  /* top for this function */
+  // previous为上一层的函数，next为调用的函数
   struct CallInfo *previous, *next;  /* dynamic call link */
   union {
     struct {  /* only for Lua functions */

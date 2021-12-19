@@ -20,11 +20,12 @@
 #include "lobject.h"
 #include "lstate.h"
 
-
-
+// 创建一个新的C闭包
 CClosure *luaF_newCclosure (lua_State *L, int n) {
+  // 创建一个新的C闭包
   GCObject *o = luaC_newobj(L, LUA_TCCL, sizeCclosure(n));
   CClosure *c = gco2ccl(o);
+  // 设置n个upvalues
   c->nupvalues = cast_byte(n);
   return c;
 }
@@ -46,10 +47,14 @@ LClosure *luaF_newLclosure (lua_State *L, int n) {
 void luaF_initupvals (lua_State *L, LClosure *cl) {
   int i;
   for (i = 0; i < cl->nupvalues; i++) {
+    // 创建一个upvalue
     UpVal *uv = luaM_new(L, UpVal);
+    // 设置引用计数
     uv->refcount = 1;
+    // 都是close状态
     uv->v = &uv->u.value;  /* make it closed */
     setnilvalue(uv->v);
+    // 将upvalue关联到闭包上
     cl->upvals[i] = uv;
   }
 }
@@ -75,6 +80,7 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   uv->u.open.next = *pp;  /* link it to list of open upvalues */
   uv->u.open.touched = 1;
   *pp = uv;
+  // 存在于堆栈中的当前值
   uv->v = level;  /* current value lives in the stack */
   if (!isintwups(L)) {  /* thread not in list of threads with upvalues? */
     L->twups = G(L)->twups;  /* link it to the list */
@@ -82,6 +88,12 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   }
   return uv;
 }
+
+// 当离开一个代码块后，这个代码块中定义的局部变量就变为不可见的。Lua会调整数据栈指针，销毁掉这些变量。
+// 若这些栈值还被某些闭包以open状态的upvalue的形式引用，就需要把它们关闭。
+// luaF_close函数逻辑：先将当前UpVal从L->openipval链表中剔除掉，然后判断当前UpVal->refcount查看是否还有被其他闭包引用, 
+// 如果refcount == 0 则释放UpVal 结构；如果还有引用则需要把数据（uv->v 这时候在数据栈上）从数据栈上copy到UpVal结构中的
+// （uv->u.value）中，最后修正UpVal中的指针 v（uv->v现在指向UpVal结构中 uv->u.value所在地址）。
 
 // 处理函数中的upvalue，如果引用计数为0，释放，或者放入slot
 void luaF_close (lua_State *L, StkId level) {
@@ -102,7 +114,7 @@ void luaF_close (lua_State *L, StkId level) {
   }
 }
 
-
+// 创建一个新的函数原型，并初始化
 Proto *luaF_newproto (lua_State *L) {
   GCObject *o = luaC_newobj(L, LUA_TPROTO, sizeof(Proto));
   Proto *f = gco2p(o);
@@ -128,7 +140,7 @@ Proto *luaF_newproto (lua_State *L) {
   return f;
 }
 
-
+// 释放函数原型
 void luaF_freeproto (lua_State *L, Proto *f) {
   luaM_freearray(L, f->code, f->sizecode);
   luaM_freearray(L, f->p, f->sizep);

@@ -81,24 +81,31 @@
 
 
 /* chain list of long jump buffers */
+// 长跳转Buffer的链表
 struct lua_longjmp {
+  // 链表
   struct lua_longjmp *previous;
+  // 跳转Buf
   luai_jmpbuf b;
+  // 错误码
   volatile int status;  /* error code */
 };
 
-
+// 设置错误对象
 static void seterrorobj (lua_State *L, int errcode, StkId oldtop) {
   switch (errcode) {
+    // 内存错误
     case LUA_ERRMEM: {  /* memory error? */
       setsvalue2s(L, oldtop, G(L)->memerrmsg); /* reuse preregistered msg. */
       break;
     }
+    // Lua错误
     case LUA_ERRERR: {
       setsvalue2s(L, oldtop, luaS_newliteral(L, "error in error handling"));
       break;
     }
     default: {
+      // 错误信息在栈顶
       setobjs2s(L, oldtop, L->top - 1);  /* error message on current top */
       break;
     }
@@ -108,23 +115,34 @@ static void seterrorobj (lua_State *L, int errcode, StkId oldtop) {
 
 
 l_noret luaD_throw (lua_State *L, int errcode) {
+    // 线程有错误跳转
   if (L->errorJmp) {  /* thread has an error handler? */
+    // 设置错误码
     L->errorJmp->status = errcode;  /* set status */
+    // 跳转
     LUAI_THROW(L, L->errorJmp);  /* jump to it */
   }
+  // 线程没有错误处理
   else {  /* thread has no error handler */
     global_State *g = G(L);
+    // 标记为死线程
     L->status = cast_byte(errcode);  /* mark it as dead */
+    // 主线程有错误处理
     if (g->mainthread->errorJmp) {  /* main thread has a handler? */
+        // 错误对象拷贝到主线程
       setobjs2s(L, g->mainthread->top++, L->top - 1);  /* copy error obj. */
+      // 重新抛出错误
       luaD_throw(g->mainthread, errcode);  /* re-throw in main thread */
     }
+    // 没有错误处理
     else {  /* no handler at all; abort */
+      // 最后的错误处理函数
       if (g->panic) {  /* panic function? */
         seterrorobj(L, errcode, L->top);  /* assume EXTRA_STACK */
         if (L->ci->top < L->top)
           L->ci->top = L->top;  /* pushing msg. can break this invariant */
         lua_unlock(L);
+        // 调用错误处理函数
         g->panic(L);  /* call panic function (last chance to jump out) */
       }
       abort();
@@ -189,7 +207,7 @@ void luaD_reallocstack (lua_State *L, int newsize) {
   lua_assert(newsize <= LUAI_MAXSTACK || newsize == ERRORSTACKSIZE);
   lua_assert(L->stack_last - L->stack == L->stacksize - EXTRA_STACK);
   luaM_reallocvector(L, L->stack, L->stacksize, newsize, TValue);
-  // 多余的置空值
+  // 新创建出来的值置为空值
   for (; lim < newsize; lim++)
     setnilvalue(L->stack + lim); /* erase new segment */
   // 设置新的尺寸
@@ -223,10 +241,11 @@ void luaD_growstack (lua_State *L, int n) {
   }
 }
 
-
+// 遍历整个调用列表，找到最大值
 static int stackinuse (lua_State *L) {
   CallInfo *ci;
   StkId lim = L->top;
+  // 找到最大值
   for (ci = L->ci; ci != NULL; ci = ci->previous) {
     if (lim < ci->top) lim = ci->top;
   }
@@ -234,18 +253,24 @@ static int stackinuse (lua_State *L) {
   return cast_int(lim - L->stack) + 1;  /* part of stack in use */
 }
 
-
+// 栈收缩
 void luaD_shrinkstack (lua_State *L) {
+  // 在用的栈大小
   int inuse = stackinuse(L);
+  // 
   int goodsize = inuse + (inuse / 8) + 2*EXTRA_STACK;
+  // 如果超过最大的大小，强制使用最大大小
   if (goodsize > LUAI_MAXSTACK)
     goodsize = LUAI_MAXSTACK;  /* respect stack limit */
+  // 如果栈大小已经超过上限，就释放所有的调用信息
   if (L->stacksize > LUAI_MAXSTACK)  /* had been handling stack overflow? */
     luaE_freeCI(L);  /* free all CIs (list grew because of an error) */
   else
+    // 收缩调用信息
     luaE_shrinkCI(L);  /* shrink list */
   /* if thread is currently not handling a stack overflow and its
      good size is smaller than current size, shrink its stack */
+  // 如果线程当前没有堆栈溢出及其适合尺寸小于当前尺寸，缩小其堆栈
   if (inuse <= (LUAI_MAXSTACK - EXTRA_STACK) &&
       goodsize < L->stacksize)
     luaD_reallocstack(L, goodsize);
@@ -267,25 +292,35 @@ void luaD_inctop (lua_State *L) {
 ** called. (Both 'L->hook' and 'L->hookmask', which triggers this
 ** function, can be changed asynchronously by signals.)
 */
+// 为给定的事件调用一个钩子。 确保有一个钩子被调用。
+// L->hook和L->hookmask都触发了该函数，可以通过信号异步更改
 void luaD_hook (lua_State *L, int event, int line) {
   lua_Hook hook = L->hook;
+  // 确定有一个钩子
   if (hook && L->allowhook) {  /* make sure there is a hook */
     CallInfo *ci = L->ci;
+    // 保存全局栈顶和调用栈顶
     ptrdiff_t top = savestack(L, L->top);
     ptrdiff_t ci_top = savestack(L, ci->top);
+
     lua_Debug ar;
     ar.event = event;
     ar.currentline = line;
     ar.i_ci = ci;
+    // 确定最小的栈大小
     luaD_checkstack(L, LUA_MINSTACK);  /* ensure minimum stack size */
     ci->top = L->top + LUA_MINSTACK;
     lua_assert(ci->top <= L->stack_last);
+    // 不再允许调用钩子函数
     L->allowhook = 0;  /* cannot call hooks inside a hook */
+    // 将调用状态设置为调用钩子状态
     ci->callstatus |= CIST_HOOKED;
     lua_unlock(L);
+    // 调用钩子函数
     (*hook)(L, &ar);
     lua_lock(L);
     lua_assert(!L->allowhook);
+    // 恢复以前的状态
     L->allowhook = 1;
     ci->top = restorestack(L, ci_top);
     L->top = restorestack(L, top);
@@ -293,16 +328,20 @@ void luaD_hook (lua_State *L, int event, int line) {
   }
 }
 
-
+// 调用钩子
 static void callhook (lua_State *L, CallInfo *ci) {
   int hook = LUA_HOOKCALL;
+  // 钩子假定pc已经增加了
   ci->u.l.savedpc++;  /* hooks assume 'pc' is already incremented */
+  // 上一个调用时lua并且是尾调用
   if (isLua(ci->previous) &&
       GET_OPCODE(*(ci->previous->u.l.savedpc - 1)) == OP_TAILCALL) {
     ci->callstatus |= CIST_TAIL;
     hook = LUA_HOOKTAILCALL;
   }
+  // 调用钩子
   luaD_hook(L, hook, -1);
+  // 矫正pc
   ci->u.l.savedpc--;  /* correct 'pc' */
 }
 
@@ -540,6 +579,8 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
 ** smaller than 9/8 of LUAI_MAXCCALLS, does not report an error (to
 ** allow overflow handling to work)
 */
+// 检查堆栈溢出的适当错误（“常规”溢出或处理堆栈溢出时溢出）。 如果“nCalls”大于
+// LUAI_MAXCCALLS（这意味着它正在处理“常规”溢出）但小于 LUAI_MAXCCALLS 的 9 / 8，不报告错误（以允许溢出处理工作）
 static void stackerror (lua_State *L) {
   if (L->nCcalls == LUAI_MAXCCALLS)
     luaG_runerror(L, "C stack overflow");
@@ -568,6 +609,7 @@ void luaD_call (lua_State *L, StkId func, int nResults) {
 /*
 ** Similar to 'luaD_call', but does not allow yields during the call
 */
+// 和luaD_call很相似，但是在调用期间不允许yield
 void luaD_callnoyield (lua_State *L, StkId func, int nResults) {
   L->nny++;
   luaD_call(L, func, nResults);
@@ -579,24 +621,31 @@ void luaD_callnoyield (lua_State *L, StkId func, int nResults) {
 ** Completes the execution of an interrupted C function, calling its
 ** continuation function.
 */
+// 完成一个被中断的C函数的执行，调用它的后续函数。
 static void finishCcall (lua_State *L, int status) {
   CallInfo *ci = L->ci;
   int n;
   /* must have a continuation and must be able to call it */
+  // 保证有一个后续函数并且能够调用它
   lua_assert(ci->u.c.k != NULL && L->nny == 0);
   /* error status can only happen in a protected call */
+  // 错误状态只发生在受保护的调用中
   lua_assert((ci->callstatus & CIST_YPCALL) || status == LUA_YIELD);
+  // 在pcall里面
   if (ci->callstatus & CIST_YPCALL) {  /* was inside a pcall? */
     ci->callstatus &= ~CIST_YPCALL;  /* continuation is also inside it */
     L->errfunc = ci->u.c.old_errfunc;  /* with the same error function */
   }
   /* finish 'lua_callk'/'lua_pcall'; CIST_YPCALL and 'errfunc' already
      handled */
+  // 完成'lua_callk'/'lua_pcall';CIST_YPCALL和'errfunc'已经处理
   adjustresults(L, ci->nresults);
   lua_unlock(L);
+  // 调用后续函数
   n = (*ci->u.c.k)(L, status, ci->u.c.ctx);  /* call continuation function */
   lua_lock(L);
   api_checknelems(L, n);
+  // 完成luaD_precall调用
   luaD_poscall(L, ci, L->top - n, n);  /* finish 'luaD_precall' */
 }
 
@@ -627,6 +676,7 @@ static void unroll (lua_State *L, void *ud) {
 ** Try to find a suspended protected call (a "recover point") for the
 ** given thread.
 */
+// 尝试找到给定线程挂起的受保护调用("恢复点")
 static CallInfo *findpcall (lua_State *L) {
   CallInfo *ci;
   for (ci = L->ci; ci != NULL; ci = ci->previous) {  /* search for a pcall */
@@ -642,17 +692,22 @@ static CallInfo *findpcall (lua_State *L) {
 ** there is one) and completes the execution of the interrupted
 ** 'luaD_pcall'. If there is no recover point, returns zero.
 */
+// 从一个协程的错误中恢复。如果有的话，找到一个恢复点并且完成被中断的luaD_pcall，如果没有恢复点，就返回0
 static int recover (lua_State *L, int status) {
   StkId oldtop;
+  // 找到调用信息
   CallInfo *ci = findpcall(L);
   if (ci == NULL) return 0;  /* no recovery point */
   /* "finish" luaD_pcall */
+  // 恢复堆栈
   oldtop = restorestack(L, ci->extra);
   luaF_close(L, oldtop);
   seterrorobj(L, status, oldtop);
   L->ci = ci;
   L->allowhook = getoah(ci->callstatus);  /* restore original 'allowhook' */
+  // 可以yield
   L->nny = 0;  /* should be zero to be yieldable */
+  // 缩小堆栈
   luaD_shrinkstack(L);
   L->errfunc = ci->u.c.old_errfunc;
   return 1;  /* continue running the coroutine */
@@ -797,7 +852,9 @@ int luaD_pcall (lua_State *L, Pfunc func, void *u,
   status = luaD_rawrunprotected(L, func, u);
   // 错误发生
   if (status != LUA_OK) {  /* an error occurred? */
-    // 恢复原来的堆栈
+	// #define savestack(L,p) ((char *)(p) - (char *)L->stack)
+    // #define restorestack(L,n) ((TValue *)((char *)L->stack + (n)))
+    // 根据old_top恢复原来的堆栈
     StkId oldtop = restorestack(L, old_top);
     luaF_close(L, oldtop);  /* close possible pending closures */
     // 设置错误obj

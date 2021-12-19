@@ -576,6 +576,9 @@ LUA_API const char *lua_pushfstring (lua_State *L, const char *fmt, ...) {
 }
 
 // 压入一个闭包
+// 当C闭包一个upvalue都没有的时候，直接用C函数指针表达，而且相同的C函数是可以复用的，
+// 不必每次构造出来时都生成一个新的CClosure对象。
+// 所以light C函数不需要GC管理内存，自然也不需要创建出CClosure对象。
 LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
   lua_lock(L);
   if (n == 0) {

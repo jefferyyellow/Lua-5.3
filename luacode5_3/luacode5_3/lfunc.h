@@ -42,19 +42,26 @@
 // 如果在离开函数外包函数之后再使用内嵌函数，此时对于这个函数而言，引用到的UpValue，变量在离开外包函数时空间被释放了，
 // 这个UpValue就是close状态的，此时需要把这个数据的值保存在结构体UpVal的成员TValue value 中。需要注意的是，
 // 这个成员的类型已经不是指针了。
+
+// upvalue的open与close状态在UpVal结构中不需要用一个标记位区分。
+// 因为当upvalue close时，UpVal中的v指针一定指向结构体内部的value。
 struct UpVal {
   // 指向堆栈或者指向它自己的值
   TValue *v;  /* points to stack or to its own value */
+  // 引用计数
   lu_mem refcount;  /* reference counter */
   union {
+    // 开放状态，指向变量的指针就好了
     struct {  /* (when open) */
       UpVal *next;  /* linked list */
       int touched;  /* mark to avoid cycles with dead threads */
     } open;
+    // 关闭状态，直接保存的是值
     TValue value;  /* the value (when closed) */
   } u;
 };
 
+// upvalue是否是open状态
 #define upisopen(up)	((up)->v != &(up)->u.value)
 
 

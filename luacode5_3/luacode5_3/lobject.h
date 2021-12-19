@@ -248,6 +248,7 @@ typedef struct lua_TValue {
 
 // 设置nui的值
 #define setnilvalue(obj) settt_(obj, LUA_TNIL)
+// 对于 LUA_TLCF 函数，直接把函数指针用宏setfvalue压入堆栈即可。
 // 设置轻量C函数的值
 #define setfvalue(obj,x) \
   { TValue *io=(obj); val_(io).f=(x); settt_(io, LUA_TLCF); }
