@@ -57,7 +57,7 @@
 // 暂停阶段
 #define GCSpause	7
 
-
+// 是否在清扫阶段
 #define issweepphase(g)  \
 	(GCSswpallgc <= (g)->gcstate && (g)->gcstate <= GCSswpend)
 

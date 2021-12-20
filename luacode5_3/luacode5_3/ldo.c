@@ -735,20 +735,27 @@ static int resume_error (lua_State *L, const char *msg, int narg) {
 ** function), plus erroneous cases: non-suspended coroutine or dead
 ** coroutine.
 */
+// 
 static void resume (lua_State *L, void *ud) {
   int n = *(cast(int*, ud));  /* number of arguments */
   StkId firstArg = L->top - n;  /* first argument */
   CallInfo *ci = L->ci;
+  // 如果当前协程的状态为LUA_OK，表示第一次执行resume操作，此时调用luaD_precall做函数调用前的装备工作
   if (L->status == LUA_OK) {  /* starting a coroutine? */
+    // 如果返回0，表示是lua函数中resume的，需要调用luaV_execute，或者就是C函数中resume的
     if (!luaD_precall(L, firstArg - 1, LUA_MULTRET))  /* Lua function? */
       luaV_execute(L);  /* call it */
   }
+  // 或者就是从YIELD状态中继续执行，首先将协程的状态置为0，其次判断此时ci的类型
   else {  /* resuming from previous yield */
     lua_assert(L->status == LUA_YIELD);
     L->status = LUA_OK;  /* mark that it is running (again) */
     ci->func = restorestack(L, ci->extra);
+    // 判断是否是lua
     if (isLua(ci))  /* yielded inside a hook? */
+      // 继续执行lua代码
       luaV_execute(L);  /* just continue running Lua code */
+	// 如果不是Lua函数，说明之前是被中断的函数调用，此时调用luaD_poscall 函数继续完成未完的函数操作；
     else {  /* 'common' yield */
       if (ci->u.c.k != NULL) {  /* does it have a continuation function? */
         lua_unlock(L);
@@ -757,45 +764,56 @@ static void resume (lua_State *L, void *ud) {
         api_checknelems(L, n);
         firstArg = L->top - n;  /* yield results come from continuation */
       }
+      // 完成luaD_precall的调用
       luaD_poscall(L, ci, firstArg, n);  /* finish 'luaD_precall' */
     }
     unroll(L, NULL);  /* run continuation */
   }
 }
 
-
+// 恢复协程执行
 LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs) {
   int status;
   unsigned short oldnny = L->nny;  /* save "number of non-yieldable" calls */
   lua_lock(L);
+  // status为LUA_OK的话，就是表示开始一个协程
   if (L->status == LUA_OK) {  /* may be starting a coroutine */
+    // 协程当前的level必须为base level
     if (L->ci != &L->base_ci)  /* not in base level? */
       return resume_error(L, "cannot resume non-suspended coroutine", nargs);
   }
   else if (L->status != LUA_YIELD)
     return resume_error(L, "cannot resume dead coroutine", nargs);
+  // 设置嵌套层数
   L->nCcalls = (from) ? from->nCcalls + 1 : 1;
   if (L->nCcalls >= LUAI_MAXCCALLS)
     return resume_error(L, "C stack overflow", nargs);
   luai_userstateresume(L, nargs);
   L->nny = 0;  /* allow yields */
   api_checknelems(L, (L->status == LUA_OK) ? nargs + 1 : nargs);
+  // 调用resume函数
   status = luaD_rawrunprotected(L, resume, &nargs);
   if (status == -1)  /* error calling 'lua_resume'? */
     status = LUA_ERRRUN;
   else {  /* continue running after recoverable errors */
+    // 如果是错误状态，就恢复错误
     while (errorstatus(status) && recover(L, status)) {
       /* unroll continuation */
       status = luaD_rawrunprotected(L, unroll, &status);
     }
+    // 不可修复的错误
     if (errorstatus(status)) {  /* unrecoverable error? */
+      // 将协程设置为死亡状态
       L->status = cast_byte(status);  /* mark thread as 'dead' */
+      // 错误信息进栈
       seterrorobj(L, status, L->top);  /* push error message */
       L->ci->top = L->top;
     }
     else lua_assert(status == L->status);  /* normal end or yield */
   }
+  // 恢复nny
   L->nny = oldnny;  /* restore 'nny' */
+  // 减少调用层级
   L->nCcalls--;
   lua_assert(L->nCcalls == ((from) ? from->nCcalls : 0));
   lua_unlock(L);
@@ -820,14 +838,18 @@ LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
     else
       luaG_runerror(L, "attempt to yield from outside a coroutine");
   }
+  // 将执行状态置为LUA_YIELD
   L->status = LUA_YIELD;
   ci->extra = savestack(L, ci->func);  /* save current 'func' */
+  // 在lua的钩子里
   if (isLua(ci)) {  /* inside a hook? */
     api_check(L, k == NULL, "hooks cannot continue after yielding");
   }
   else {
+      // 是否有一个继续函数
     if ((ci->u.c.k = k) != NULL)  /* is there a continuation? */
       ci->u.c.ctx = ctx;  /* save context */
+    // 保护堆栈的结果
     ci->func = L->top - nresults - 1;  /* protect stack below results */
     luaD_throw(L, LUA_YIELD);
   }

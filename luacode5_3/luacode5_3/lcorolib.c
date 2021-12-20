@@ -25,7 +25,7 @@ static lua_State *getco (lua_State *L) {
   return co;
 }
 
-// 恢复执行得辅助函数
+// 恢复执行的辅助函数
 static int auxresume (lua_State *L, lua_State *co, int narg) {
   int status;
   // 堆栈上参数空间大小校验
@@ -53,7 +53,7 @@ static int auxresume (lua_State *L, lua_State *co, int narg) {
       lua_pushliteral(L, "too many results to resume");
       return -1;  /* error flag */
     }
-    // 移动产生的值
+    // 如果resume成功，需要将yielded的值拷贝到调用resume的协程
     lua_xmove(co, L, nres);  /* move yielded values */
     return nres;
   }
@@ -67,11 +67,14 @@ static int auxresume (lua_State *L, lua_State *co, int narg) {
 
 // 协程恢复执行
 static int luaB_coresume (lua_State *L) {
-  // 得到协程
+  // 得到栈顶的协程
   lua_State *co = getco(L);
   int r;
-  // 掉线恢复执行辅助函数
+  // 执行恢复辅助函数
   r = auxresume(L, co, lua_gettop(L) - 1);
+  // 根据auxresume的返回值来做不同的处理。当返回值小于0时，说明resume操作出错，并
+  // 且此时出错信息在栈顶，因此压入false以及出错消息；否则，auxresume的返回值表示
+  // 执行resume操作时返回的参数数量，这种情况下压人true以及这些返回参数。
   if (r < 0) {
     // 返回false
     lua_pushboolean(L, 0);

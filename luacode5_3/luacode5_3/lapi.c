@@ -126,7 +126,7 @@ LUA_API int lua_checkstack (lua_State *L, int n) {
   return res;
 }
 
-// 堆栈数据移动
+// 堆栈数据移动,从一个协程拷贝到另外一个协程
 LUA_API void lua_xmove (lua_State *from, lua_State *to, int n) {
   int i;
   if (from == to) return;
