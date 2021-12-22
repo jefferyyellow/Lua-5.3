@@ -394,6 +394,9 @@ static void tryfuncTM (lua_State *L, StkId func) {
 ** expressions, multiple results for tail calls/single parameters)
 ** separated.
 */
+// 在'firstResult'中给定'nres'个结果,移动它们中的'wanted'个到'res'.
+// 最典型的处理方法（命令无结果，表达式一个结果，尾调用或者单参数的多个结果）
+// moveresults会将结果集（0个/1个/多个），逐个根据顺序拷贝到ci->func位置，并调整L->top的指针位置，如果返回值不够，会用nil填充
 // nres：实际的返回值数目
 // wanted：要求的返回值数目
 static int moveresults (lua_State *L, const TValue *firstResult, StkId res,

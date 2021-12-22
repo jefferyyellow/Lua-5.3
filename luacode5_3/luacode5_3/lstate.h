@@ -92,7 +92,7 @@ typedef struct stringtable {
 ** function can be called with the correct top.
 */
 typedef struct CallInfo {
-  // 栈对应的函数
+  // 当前调用栈的调用指针处,指向正在调用操作的栈底位置。（也可以认为指向调用函数的位置）
   StkId func;  /* function index in the stack */
   // 函数的栈顶
   StkId	top;  /* top for this function */
@@ -256,6 +256,7 @@ typedef struct global_State {
 /*
 ** 'per thread' state
 */
+// Lua栈初始化的时候，会默认分配一个40大小的栈空间，栈尾l->stack，栈顶操作指针l->top，栈头l->stack_last
 // 每个线程的状态
 struct lua_State {
   CommonHeader;
@@ -270,12 +271,14 @@ struct lua_State {
   CallInfo *ci;  /* call info for current function */
   // 上一次追踪的pc
   const Instruction *oldpc;  /* last pc traced */
+  // 指向栈头部，但是会留空EXTRA_STACK=5个BUF，用于元表调用或错误处理的栈操作
   StkId stack_last;  /* last free slot in the stack */
   // 堆栈起始部分
   StkId stack;  /* stack base */
   // 此堆栈中打开的upvalues列表
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
+  // 拥有开发状态upvalues的协程
   struct lua_State *twups;  /* list of threads with open upvalues */
   struct lua_longjmp *errorJmp;  /* current error recover point */
   // 第一层的调用信息(C调用Lua)
