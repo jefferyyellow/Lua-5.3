@@ -274,7 +274,7 @@ OP_CLOSURE,		/*	A Bx	R(A) := closure(KPROTO[Bx])			*/
 
 OP_VARARG,		/*	A B		R(A), R(A+1), ..., R(A+B-2) = vararg		*/
 
-OP_EXTRAARG		/*	Ax		extra (larger) argument for previous opcode	*/
+OP_EXTRAARG		/*	Ax		extra (larger) argument for previous opcode	*/ // 先前操作码的额外（更大）参数
 } OpCode;
 
 
@@ -343,9 +343,9 @@ LUAI_DDEC const lu_byte luaP_opmodes[NUM_OPCODES];
 // 第1位，第0位（2位：0-1）：m
 // 取2位：第0-1位，得到操作码模式
 #define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 3))
-// 取2位：第2-3位，得到B的模式
+// 取2位：第4-5位，得到B的模式
 #define getBMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 4) & 3))
-// 取2位：第4-5位，得到C的模式
+// 取2位：第2-3位，得到C的模式
 #define getCMode(m)	(cast(enum OpArgMask, (luaP_opmodes[m] >> 2) & 3))
 // 取1位，第6位，检查A的模式
 #define testAMode(m)	(luaP_opmodes[m] & (1 << 6))

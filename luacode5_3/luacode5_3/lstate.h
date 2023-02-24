@@ -157,11 +157,11 @@ typedef struct global_State {
   void *ud;         /* auxiliary data to 'frealloc' */
   // 当前使用的内存大小(为实际内存分配器所分配的内存与GCdebt的差值)
   l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
-  // 用于在单次GC之前保存待回收的数据大小。（需要回收的内存数量。）
+  // 要回收的内存数量
   l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
-  // GC遍历的内存
+  // 本次遍历收集的内存大小，可以将一次gc收集分成几次完成，使一次收集不占用太多时间
   lu_mem GCmemtrav;  /* memory traversed by the GC */
-  // 对使用中的非垃圾内存的估计(一个估计值，用于保存实际在用的内存大小。)
+  // 内存实际使用量的估计值(一个估计值，用于保存实际在用的内存大小。)
   lu_mem GCestimate;  /* an estimate of the non-garbage memory in use */
   // 字符串的hash表, 全局字符串表，几乎每个语言都会对字符串做池化，作成immutable的，Lua的字符串分短字符串和长字符串
   stringtable strt;  /* hash table for strings */
@@ -234,7 +234,7 @@ typedef struct global_State {
   unsigned int gcfinnum;  /* number of finalizers to call in each GC step */
   // 用于控制下一轮GC开始的时机。gcpause控制每次完整GC间的间隔(即完整GC频率)
   int gcpause;  /* size of pause between successive GCs */
-  // 控制GC 的回收速度。
+  // 一次收集的最大内存，和GCmemtrav配合使用，控制GC的回收速度。
   int gcstepmul;  /* GC 'granularity' */
   // 全局错误处理响应点(处理不受保护的错误)
   lua_CFunction panic;  /* to be called in unprotected errors */
@@ -262,29 +262,35 @@ struct lua_State {
   CommonHeader;
   // 调用信息的数目
   unsigned short nci;  /* number of items in 'ci' list */
-  // 状态：运行，挂起
+  // 线程脚本的状态：运行，挂起
   lu_byte status;
-  // 栈顶
+  // 指向当前线程栈的栈顶指针
   StkId top;  /* first free slot in the stack */
+  // 全局状态指针,只存在一份，所有的 L 都共享这个 G。
   global_State *l_G;
-  // 当前函数的调用信息
+  // 当前线程运行的函数调用信息
   CallInfo *ci;  /* call info for current function */
-  // 上一次追踪的pc
+  // 在当前thread 的解释执行指令的过程中，指向最后一次执行的指令的指针。
   const Instruction *oldpc;  /* last pc traced */
   // 指向栈头部，但是会留空EXTRA_STACK=5个BUF，用于元表调用或错误处理的栈操作
+  // 指向栈最后的使用位置
   StkId stack_last;  /* last free slot in the stack */
-  // 堆栈起始部分
+  // 栈底，也就是堆栈起始部分
   StkId stack;  /* stack base */
   // 此堆栈中打开的upvalues列表
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   // 拥有开发状态upvalues的协程
   struct lua_State *twups;  /* list of threads with open upvalues */
+  // 发生错误的长跳转位置
   struct lua_longjmp *errorJmp;  /* current error recover point */
-  // 第一层的调用信息(C调用Lua)
+  // 记录调用栈的栈底（最外层的CallInfo）, base_ci 一定是从 C 函数发起的调用；而调用栈的栈顶，一定是当前正在执行的函数的CallInfo
   CallInfo base_ci;  /* CallInfo for first level (C calling Lua) */
+  // 用户注册的hook回调函数
   volatile lua_Hook hook;
+  // 发生错误的回调函数
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
+  // 栈的大小（本质上是一个 TValue 数组的大小）
   int stacksize;
   // 基本的钩子计数，可能会重置到这个计数
   int basehookcount;
@@ -292,9 +298,11 @@ struct lua_State {
   int hookcount;
   // 在堆栈中不能yield的计数
   unsigned short nny;  /* number of non-yieldable calls in stack */
-  // 嵌套 C 调用的数量
+  // 记录调用栈中C函数调用深度（层数）
   unsigned short nCcalls;  /* number of nested C calls */
+  // 支持那些hook能力
   l_signalT hookmask;
+  // 是否运行hook
   lu_byte allowhook;
 };
 

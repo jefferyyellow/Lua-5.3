@@ -33,24 +33,32 @@
    than 250, due to the bytecode format) */
 #define MAXVARS		200
 
-
+// 多个返回值
 #define hasmultret(k)		((k) == VCALL || (k) == VVARARG)
 
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
+// 因为所有的字符串都被扫描器统一了，解析器可以使用指针相等来实现字符串相等的比较
 #define eqstr(a,b)	((a) == (b))
 
 
 /*
 ** nodes for block list (list of active blocks)
 */
+// 块列表的节点（活动块列表）
 typedef struct BlockCnt {
+  // 前一个列表
   struct BlockCnt *previous;  /* chain */
+  // 代码块中的第一个标签的索引
   int firstlabel;  /* index of first label in this block */
+  // 代码块中第一个待处理的go to语句的标签
   int firstgoto;  /* index of first pending goto in this block */
+  // 程序块外面活跃的局部变量
   lu_byte nactvar;  /* # active locals outside the block */
+  // 程序块中的某个变量是upvalue的话为true
   lu_byte upval;  /* true if some variable in the block is an upvalue */
+  // 程序块是一个循环的话为true
   lu_byte isloop;  /* true if 'block' is a loop */
 } BlockCnt;
 
@@ -69,26 +77,28 @@ static l_noret semerror (LexState *ls, const char *msg) {
   luaX_syntaxerror(ls, msg);
 }
 
-
+// 报错token的类型应该为指定类型
 static l_noret error_expected (LexState *ls, int token) {
   luaX_syntaxerror(ls,
       luaO_pushfstring(ls->L, "%s expected", luaX_token2str(ls, token)));
 }
 
-
+// 超限错误
 static l_noret errorlimit (FuncState *fs, int limit, const char *what) {
   lua_State *L = fs->ls->L;
   const char *msg;
   int line = fs->f->linedefined;
+  // 格式化错误信息
   const char *where = (line == 0)
                       ? "main function"
                       : luaO_pushfstring(L, "function at line %d", line);
   msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
                              what, limit, where);
+  // 报语法错误
   luaX_syntaxerror(fs->ls, msg);
 }
 
-
+// 超出限制检查，如果超限就报错
 static void checklimit (FuncState *fs, int v, int l, const char *what) {
   if (v > l) errorlimit(fs, l, what);
 }
@@ -102,13 +112,13 @@ static int testnext (LexState *ls, int c) {
   else return 0;
 }
 
-
+// ls token对应的类型是否为c,如果不为c，报错token的类型应该为指定类型
 static void check (LexState *ls, int c) {
   if (ls->t.token != c)
     error_expected(ls, c);
 }
 
-
+// 检查当前的token是c类型，然后取下一个token
 static void checknext (LexState *ls, int c) {
   check(ls, c);
   luaX_next(ls);
@@ -118,11 +128,13 @@ static void checknext (LexState *ls, int c) {
 #define check_condition(ls,c,msg)	{ if (!(c)) luaX_syntaxerror(ls, msg); }
 
 
-
+// 检查当前是否为what，如果不是就根据情况报错
 static void check_match (LexState *ls, int what, int who, int where) {
   if (!testnext(ls, what)) {
+    // 如果是同一行
     if (where == ls->linenumber)
       error_expected(ls, what);
+    // 不同行的语法错误提示
     else {
       luaX_syntaxerror(ls, luaO_pushfstring(ls->L,
              "%s expected (to close %s at line %d)",
@@ -131,28 +143,34 @@ static void check_match (LexState *ls, int what, int who, int where) {
   }
 }
 
-
+// 检查变量名，返回变量名字符串，然后读取下一个token
 static TString *str_checkname (LexState *ls) {
   TString *ts;
+  // 校验变量名类型
   check(ls, TK_NAME);
   ts = ls->t.seminfo.ts;
+  // 读取下一个token
   luaX_next(ls);
   return ts;
 }
 
 // 初始化表达式结构
 static void init_exp (expdesc *e, expkind k, int i) {
+  // 设置f和t都是不跳转
   e->f = e->t = NO_JUMP;
+  // 设置表达式类型
   e->k = k;
+  // 参数
   e->u.info = i;
 }
 
-
+// 字符串的字节码 
 static void codestring (LexState *ls, expdesc *e, TString *s) {
+  // 将字符串加入常量表，返回常量表的索引，然后初始化表达式结构
   init_exp(e, VK, luaK_stringK(ls->fs, s));
 }
 
-
+// 检查变量名，然后编码变量名
 static void checkname (LexState *ls, expdesc *e) {
   codestring(ls, e, str_checkname(ls));
 }
@@ -352,14 +370,15 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
     ls->fs->freereg -= nexps - nvars;  /* remove extra values */
 }
 
-
+// 进入C函数调用，增加调用栈中C函数的调用深度（层数）
 static void enterlevel (LexState *ls) {
   lua_State *L = ls->L;
   ++L->nCcalls;
+  // 校验不能超过最大的调用深度
   checklimit(ls->fs, L->nCcalls, LUAI_MAXCCALLS, "C levels");
 }
 
-
+// 离开C函数调用，减少调用堆栈中C函数的调用深度（层数）
 #define leavelevel(ls)	((ls)->L->nCcalls--)
 
 
@@ -625,14 +644,17 @@ static int block_follow (LexState *ls, int withuntil) {
   }
 }
 
-
+// 分析语句列表
 static void statlist (LexState *ls) {
   /* statlist -> { stat [';'] } */
   while (!block_follow(ls, 1)) {
+    // 返回语句
     if (ls->t.token == TK_RETURN) {
+      // 分析语句
       statement(ls);
       return;  /* 'return' must be last statement */
     }
+    // 分析语句
     statement(ls);
   }
 }
@@ -651,11 +673,17 @@ static void fieldsel (LexState *ls, expdesc *v) {
 // 解析一个以变量为键的工作在yindex函数中进行，
 // 解析变量形成表达式相关的expdesc 结构体；
 // 根据不同的表达式类型将表达式的值存入寄存器。
+//
+// 解析table中的索引方式（[]方式）
 static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
+  // 跳过token [
   luaX_next(ls);  /* skip the '[' */
+  // 解析中括号中的表达式的值
   expr(ls, v);
+  // 确保最终表达式结果在寄存器中或者是常量 
   luaK_exp2val(ls->fs, v);
+  // 校验后面的]
   checknext(ls, ']');
 }
 
@@ -666,16 +694,21 @@ static void yindex (LexState *ls, expdesc *v) {
 ** =======================================================================
 */
 
-
+// 用于表的构造控制
 struct ConsControl {
+  // 最后读取的表达式
   expdesc v;  /* last list item read */
+  // 表表达式
   expdesc *t;  /* table descriptor */
+  // hash部分的元素数目
   int nh;  /* total number of 'record' elements */
+  // 数组部分的元素数目
   int na;  /* total number of array elements */
+  // 有待存储的数组元素
   int tostore;  /* number of array elements pending to be stored */
 };
 
-// 初始化散列部分的代码
+// 初始化表Hash部分的代码
 static void recfield (LexState *ls, struct ConsControl *cc) {
   /* recfield -> (NAME | '['exp1']') = exp1 */
   FuncState *fs = ls->fs;
@@ -684,24 +717,29 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   int rkkey;
   // 常量为键值
   if (ls->t.token == TK_NAME) {
+    // hash部分数目是否超限
     checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+    // 检查键名，然后编码变量名
     checkname(ls, &key);
   }
   else  /* ls->t.token == '[' */
-    // 变量为键值
+    // 得到中括号的键值
     yindex(ls, &key);
+  // 增加在hash中的数量
   cc->nh++;
   checknext(ls, '=');
   // 得到key常量在常量数组中的索引，根据这个值调用luaK_exp2RK函数生成RK值。
   rkkey = luaK_exp2RK(fs, &key);
   // 得到value表达式的索引
   expr(ls, &val);
-  // 将前两步的值以及表在寄存器中的索引，写入OP_SETTABLE 的参数中。
+  // 将前两步的值以及表在寄存器中的索引，写入OP_SETTABLE的参数中。
   luaK_codeABC(fs, OP_SETTABLE, cc->t->u.info, rkkey, luaK_exp2RK(fs, &val));
+  // 是否寄存器
   fs->freereg = reg;  /* free registers */
 }
 
 // 调用closelistfield 。从这个函数的命名可以看出，它做的工作是针对数组部分的
+// 当数组部分积攒到一定程度时，使用OP_SETLIST（以一个基地址和数量来将数据写入表的数组部分）写入表的数组部分
 static void closelistfield (FuncState *fs, struct ConsControl *cc) {
   // 没有数组元素，直接返回
   if (cc->v.k == VVOID) return;  /* there is no list item */
@@ -716,22 +754,30 @@ static void closelistfield (FuncState *fs, struct ConsControl *cc) {
   // 要限制每次调用OP_SETLIST指令中的数据量不超过LFIELDS_PER_FLUSH，是因为如果不做
   // 这个限制，会导致数组部分数据过多时，占用过多的寄存器，而Lua栈对寄存器数量是有限制的。
   if (cc->tostore == LFIELDS_PER_FLUSH) {
+    // 积累了一定量(tostore)的数据，一次性放入nar中
     luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
     cc->tostore = 0;  /* no more items pending */
   }
 }
 
-
+// 将最后没有满LFIELDS_PER_FLUSH个的数组部分写入
 static void lastlistfield (FuncState *fs, struct ConsControl *cc) {
+  // 如果没有待写入的部分，直接返回
   if (cc->tostore == 0) return;
+  // 多返回值
   if (hasmultret(cc->v.k)) {
+    // 将表达式的值设置为多返回值
     luaK_setmultret(fs, &cc->v);
+    // 写入na起的多个
     luaK_setlist(fs, cc->t->u.info, cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
+    // 如果最后一个不是空
     if (cc->v.k != VVOID)
+      // 确保表达式的结果（包括从它的跳转表的结果）保存在下一个可用的寄存器中
       luaK_exp2nextreg(fs, &cc->v);
+    // 将剩下的部分写入
     luaK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);
   }
 }
@@ -743,9 +789,13 @@ static void lastlistfield (FuncState *fs, struct ConsControl *cc) {
 // 依次将ConsControl结构体中的成员na和tostore加l 。
 static void listfield (LexState *ls, struct ConsControl *cc) {
   /* listfield -> exp */
+  // 解析表达式，放入cc-v中
   expr(ls, &cc->v);
+  // 检验列表的元素是否超限
   checklimit(ls->fs, cc->na, MAX_INT, "items in a constructor");
+  // 增加列表的元素个数
   cc->na++;
+  // 增加有待存储的元素个数
   cc->tostore++;
 }
 
@@ -756,20 +806,24 @@ static void listfield (LexState *ls, struct ConsControl *cc) {
 static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
+    // 变量名，可能是数组部分，也可能是散列部分
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
+      // 预读下一个token，
+      // 不是赋值
       if (luaX_lookahead(ls) != '=')  /* expression? */
+        // 加入数组部分
         listfield(ls, cc);
       else
+        // 加入散列部分
         recfield(ls, cc);
       break;
     }
-    // 如果看到的是［符号，就认为这是一个散列部分的构造
+    // 如果看到的是［符号，就认为这是一个hash部分的构造
     case '[': {
       recfield(ls, cc);
       break;
     }
-    // 否则就是数组部分的构造了。如果是数组部分的构造，那么进入的是listfield 函
-	// 数，否则就是recf ield 函数了
+    // 默认认为就是数组部分的构造
     default: {
       listfield(ls, cc);
       break;
@@ -777,7 +831,7 @@ static void field (LexState *ls, struct ConsControl *cc) {
   }
 }
 
-
+// 构造表的操作
 static void constructor (LexState *ls, expdesc *t) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
@@ -796,6 +850,7 @@ static void constructor (LexState *ls, expdesc *t) {
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
   // 将寄存器地址修正为前面创建的OP_NEWTABLE指令的参数A 。
   luaK_exp2nextreg(ls->fs, t);  /* fix it at stack top */
+  // 如果是{,跳过{，不是就报错
   checknext(ls, '{');
   // 遍历表中的部分
   do {
@@ -807,11 +862,13 @@ static void constructor (LexState *ls, expdesc *t) {
 	// 成员变量v的表达式类型是VVOID ，因此这种情况下进入这个函数并不会有什么效果，这
 	// 就把循环和前面的初始化语句衔接在了一起。
     closelistfield(fs, &cc);
-    // 处理字段
+    // 解析字段，得到字段对应的表达式
     field(ls, &cc);
     // 找下一个字段
   } while (testnext(ls, ',') || testnext(ls, ';'));
+  // 检查后面是否就是}
   check_match(ls, '}', '{', line);
+  // 如果还有没写入的，将剩下的部分写入 
   lastlistfield(fs, &cc);
   // 将ConsControl结构体中存放的散列和数组部分的大小，写入前面生成的
   // OP_NEWTABLE指令的B和C部分。
@@ -1010,9 +1067,11 @@ static void suffixedexp (LexState *ls, expdesc *v) {
 
 // 简单的表达式
 static void simpleexp (LexState *ls, expdesc *v) {
+    // 简单表达式的EBNF范式
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
   switch (ls->t.token) {
+      // 浮点数，正式和字符串，直接用词法解析器里得到的值
     case TK_FLT: {
       init_exp(v, VKFLT, 0);
       v->u.nval = ls->t.seminfo.r;
@@ -1023,10 +1082,12 @@ static void simpleexp (LexState *ls, expdesc *v) {
       v->u.ival = ls->t.seminfo.i;
       break;
     }
+    // 将字符串加入常量表，然后设置对应的常量表索引
     case TK_STRING: {
       codestring(ls, v, ls->t.seminfo.ts);
       break;
     }
+    // nil
     case TK_NIL: {
       init_exp(v, VNIL, 0);
       break;
@@ -1039,19 +1100,24 @@ static void simpleexp (LexState *ls, expdesc *v) {
       init_exp(v, VFALSE, 0);
       break;
     }
+    // (...)就是不定参数 
     case TK_DOTS: {  /* vararg */
       FuncState *fs = ls->fs;
       check_condition(ls, fs->f->is_vararg,
                       "cannot use '...' outside a vararg function");
+      // 不定参数直接编码
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 1, 0));
       break;
     }
+    // 构造，对一个table赋初值
     case '{': {  /* constructor */
       constructor(ls, v);
       return;
     }
+    // 处理函数
     case TK_FUNCTION: {
       luaX_next(ls);
+      // 进入函数体的解析
       body(ls, v, 0, ls->linenumber);
       return;
     }
@@ -1063,13 +1129,19 @@ static void simpleexp (LexState *ls, expdesc *v) {
   luaX_next(ls);
 }
 
-
+// 解析一元操作符
+// 一元操作符的英文：unary operator
 static UnOpr getunopr (int op) {
   switch (op) {
+    // 取反 not
     case TK_NOT: return OPR_NOT;
+    // 减去或者取负
     case '-': return OPR_MINUS;
+    // 按位非
     case '~': return OPR_BNOT;
+    // 取长度
     case '#': return OPR_LEN;
+    // 不是一元操作符
     default: return OPR_NOUNOPR;
   }
 }
@@ -1149,19 +1221,25 @@ static const struct {
 // 的表达式。
 // 3。接着看读到的字符是不是二元操作符，如果是并且同时满足这个二元操作符的优先级大
 // 于当前subexpr函数的优先级，那么递归调用函数subexpr来处理二元操作符左边的式子。
+
+// 解析表达式
 static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
+  // 进行C函数调用
   enterlevel(ls);
+  // 解析一元操作符
   uop = getunopr(ls->t.token);
   // 一元操作符
   if (uop != OPR_NOUNOPR) {
     int line = ls->linenumber;
     luaX_next(ls);
-    // 递归调用
+    // 一元操作符的优先级进行递归调用
     subexpr(ls, v, UNARY_PRIORITY);
+    // 应用一元表达式
     luaK_prefix(ls->fs, uop, v, line);
   }
+  // 简单的表达式
   else simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
   // 当操作符的优先级比'limit'高就展开
@@ -1179,11 +1257,12 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
     luaK_posfix(ls->fs, op, v, &v2, line);
     op = nextop;
   }
+  // 退出C函数调用
   leavelevel(ls);
   return op;  /* return first untreated operator */
 }
 
-
+// 解析表达式
 static void expr (LexState *ls, expdesc *v) {
   subexpr(ls, v, 0);
 }
@@ -1513,16 +1592,20 @@ static void forstat (LexState *ls, int line) {
   leaveblock(fs);  /* loop scope ('break' jumps to this point) */
 }
 
-
+// 处理IF cond THEN block或者ELSEIF cond THEN block这两种语句
 static void test_then_block (LexState *ls, int *escapelist) {
   /* test_then_block -> [IF | ELSEIF] cond THEN block */
   BlockCnt bl;
   FuncState *fs = ls->fs;
   expdesc v;
   int jf;  /* instruction to skip 'then' code (if condition is false) */
+  // 跳过if或者elseif
   luaX_next(ls);  /* skip IF or ELSEIF */
+  // 读取条件
   expr(ls, &v);  /* read condition */
+  // 确定后面是否是then，并取下一个
   checknext(ls, TK_THEN);
+  // 
   if (ls->t.token == TK_GOTO || ls->t.token == TK_BREAK) {
     luaK_goiffalse(ls->fs, &v);  /* will jump to label if condition is true */
     enterblock(fs, &bl, 0);  /* must enter block before 'goto' */
@@ -1548,14 +1631,17 @@ static void test_then_block (LexState *ls, int *escapelist) {
   luaK_patchtohere(fs, jf);
 }
 
-
+// if语句解析 
 static void ifstat (LexState *ls, int line) {
+  // if语句的EBNF语法如下
   /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END */
   FuncState *fs = ls->fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
   test_then_block(ls, &escapelist);  /* IF cond THEN block */
+  // elseif部分
   while (ls->t.token == TK_ELSEIF)
     test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
+  // else部分
   if (testnext(ls, TK_ELSE))
     block(ls);  /* 'else' part */
   check_match(ls, TK_END, TK_IF, line);
@@ -1678,15 +1764,20 @@ static void retstat (LexState *ls) {
   testnext(ls, ';');  /* skip optional semicolon */
 }
 
-
+// 分析语句
 static void statement (LexState *ls) {
+  // 得到当前的行号
   int line = ls->linenumber;  /* may be needed for error messages */
+  //  进入C函数调用，增加调用栈中调用C函数的深度
   enterlevel(ls);
+  // 根据词法分析器返回的token
   switch (ls->t.token) {
+     // lua对单独的分号啥也不做，空语句
     case ';': {  /* stat -> ';' (empty statement) */
       luaX_next(ls);  /* skip ';' */
       break;
     }
+    // if语句
     case TK_IF: {  /* stat -> ifstat */
       ifstat(ls, line);
       break;
@@ -1744,6 +1835,7 @@ static void statement (LexState *ls) {
   lua_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
              ls->fs->freereg >= ls->fs->nactvar);
   ls->fs->freereg = ls->fs->nactvar;  /* free registers */
+  // 离开C函数调用，减少C函数调用深度
   leavelevel(ls);
 }
 
@@ -1764,7 +1856,9 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   fs->f->is_vararg = 1;  /* main function is always declared vararg */
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
+  // 读取第一个词法Token
   luaX_next(ls);  /* read first token */
+  // 分析main函数体
   statlist(ls);  /* parse main body */
   check(ls, TK_EOS);
   close_func(ls);

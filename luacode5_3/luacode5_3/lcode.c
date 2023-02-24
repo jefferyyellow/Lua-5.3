@@ -30,9 +30,10 @@
 
 
 /* Maximum number of registers in a Lua function (must fit in 8 bits) */
+// lua函数最大的寄存器数目
 #define MAXREGS		255
 
-
+// hasjumps函数判断表达式e的truelist和falselist的数量不一致
 #define hasjumps(e)	((e)->t != (e)->f)
 
 
@@ -40,9 +41,12 @@
 ** If expression is a numeric constant, fills 'v' with its value
 ** and returns 1. Otherwise, returns 0.
 */
+// 如果表达式为数字常量，用表达式的值填充v，并且返回1，或者返回0
 static int tonumeral(const expdesc *e, TValue *v) {
-  if (hasjumps(e))
+    // 不是数字
+    if (hasjumps(e))
     return 0;  /* not a numeral */
+   // 根据整数和浮点数，进行赋值
   switch (e->k) {
     case VKINT:
       if (v) setivalue(v, e->u.ival);
@@ -89,10 +93,12 @@ void luaK_nil (FuncState *fs, int from, int n) {
 */
 // 得到跳转指令的目标地址。用于遍历跳转指令列表
 static int getjump (FuncState *fs, int pc) {
+  // 得到指令中sBx的值,
   int offset = GETARG_sBx(fs->f->code[pc]);
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else
+    // 将一个偏移转换成一个绝对位置
     return (pc+1)+offset;  /* turn offset into absolute position */
 }
 
@@ -198,11 +204,16 @@ int luaK_getlabel (FuncState *fs) {
 ** jump (that is, its condition), or the jump itself if it is
 ** unconditional.
 */
+// 返回“控制”给定跳转的指令的位置（即它的条件），如果它是无条件的，则返回跳转本身。 
+// 就是找到跳转指令的条件判断指令的位置，如果是条件跳转，就返回条件判断所在的位置
 static Instruction *getjumpcontrol (FuncState *fs, int pc) {
   Instruction *pi = &fs->f->code[pc];
+  // 条件判断
   if (pc >= 1 && testTMode(GET_OPCODE(*(pi-1))))
+    // 条件判断就是前一条指令
     return pi-1;
   else
+    // 无条件判断就是当前指令
     return pi;
 }
 
@@ -225,6 +236,7 @@ static int patchtestreg (FuncState *fs, int node, int reg) {
   // 当这个值有效并且不等于参数B时，直接使用这个值赋值给OP_TESTSET指令的参数A 。
   if (GET_OPCODE(*i) != OP_TESTSET)
     return 0;  /* cannot patch other instructions */
+  // 如果reg不是非法的寄存器，且不等于R(B) 
   if (reg != NO_REG && reg != GETARG_B(*i))
     SETARG_A(*i, reg);
   else {
@@ -241,8 +253,11 @@ static int patchtestreg (FuncState *fs, int node, int reg) {
 /*
 ** Traverse a list of tests ensuring no one produces a value
 */
+// 遍历一系列测试确保没有使用寄存器值
 static void removevalues (FuncState *fs, int list) {
+  // 遍历跳转表
   for (; list != NO_JUMP; list = getjump(fs, list))
+      // 将比较指令都设置为不使用寄存器值
       patchtestreg(fs, list, NO_REG);
 }
 
@@ -263,10 +278,11 @@ static void patchlistaux (FuncState *fs, int list, int vtarget, int reg,
       // 先暂时保存下一个跳转列表项
     int next = getjump(fs, list);
     // 回填地址
-	// ，如果传人的跳转指令是紧跟在OP_TESTSET指令的，就返回l
+	// 如果传人的跳转指令是紧跟在OP_TESTSET指令的，就返回l
     if (patchtestreg(fs, list, reg))
       fixjump(fs, list, vtarget);
     else
+      // 跳转到默认的目标
       fixjump(fs, list, dtarget);  /* jump to default target */
     list = next;
   }
@@ -336,17 +352,22 @@ void luaK_patchclose (FuncState *fs, int list, int level) {
 ** Emit instruction 'i', checking for array sizes and saving also its
 ** line information. Return 'i' position.
 */
+// 将指令i放入指令列表中，并且保存其对应的行号信息，返回指令i所在的位置
 static int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->f;
   // 回填所有跳转到pc的目标地址
   dischargejpc(fs);  /* 'pc' will change */
   /* put new instruction in code array */
+  // 增加code的长度，确定f->code还能放得下，放不下就增长
   luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
                   MAX_INT, "opcodes");
+  // 将指令放入指令列表中
   f->code[fs->pc] = i;
+  // 保存对应的行号信息
   /* save corresponding line information */
   luaM_growvector(fs->ls->L, f->lineinfo, fs->pc, f->sizelineinfo, int,
                   MAX_INT, "opcodes");
+  // 保存指令所在的行
   f->lineinfo[fs->pc] = fs->ls->lastline;
   return fs->pc++;
 }
@@ -356,11 +377,13 @@ static int luaK_code (FuncState *fs, Instruction i) {
 ** Format and emit an 'iABC' instruction. (Assertions check consistency
 ** of parameters versus opcode.)
 */
+// 格式化并生成'iABC'指令集，断言检查参数与操作码的一致性
 int luaK_codeABC (FuncState *fs, OpCode o, int a, int b, int c) {
   lua_assert(getOpMode(o) == iABC);
   lua_assert(getBMode(o) != OpArgN || b == 0);
   lua_assert(getCMode(o) != OpArgN || c == 0);
   lua_assert(a <= MAXARG_A && b <= MAXARG_B && c <= MAXARG_C);
+  // CREATE_ABC生成对应的字节码，加入当前的指令列表中
   return luaK_code(fs, CREATE_ABC(o, a, b, c));
 }
 
@@ -379,8 +402,10 @@ int luaK_codeABx (FuncState *fs, OpCode o, int a, unsigned int bc) {
 /*
 ** Emit an "extra argument" instruction (format 'iAx')
 */
+// 构造“额外参数”指令（格式为“iAx”）
 static int codeextraarg (FuncState *fs, int a) {
   lua_assert(a <= MAXARG_Ax);
+  // 构建一个“额外参数”指令，加入指令列表
   return luaK_code(fs, CREATE_Ax(OP_EXTRAARG, a));
 }
 
@@ -419,8 +444,10 @@ void luaK_checkstack (FuncState *fs, int n) {
 /*
 ** Reserve 'n' registers in register stack
 */
+// 预定寄存器 实际上是占用n个寄存器的意思
 void luaK_reserveregs (FuncState *fs, int n) {
   luaK_checkstack(fs, n);
+  // 将第一个空闲的寄存器后移
   fs->freereg += n;
 }
 
@@ -431,6 +458,7 @@ void luaK_reserveregs (FuncState *fs, int n) {
 )
 */
 static void freereg (FuncState *fs, int reg) {
+    // 不是常量并且不是活动的寄存器了
   if (!ISK(reg) && reg >= fs->nactvar) {
     fs->freereg--;
     lua_assert(reg == fs->freereg);
@@ -441,7 +469,9 @@ static void freereg (FuncState *fs, int reg) {
 /*
 ** Free register used by expression 'e' (if any)
 */
+// 释放用过的寄存器
 static void freeexp (FuncState *fs, expdesc *e) {
+    // 表示分配的寄存器，可以动态释放的
   if (e->k == VNONRELOC)
     freereg(fs, e->u.info);
 }
@@ -472,27 +502,40 @@ static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
 ** as keys (nil cannot be a key, integer keys can collapse with float
 ** keys), the caller must provide a useful 'key' for indexing the cache.
 */
+// 将常量“v”添加到原型的常量列表（字段“k”）。使用扫描器的表来缓存常量列表中常量的位置，
+// 并尝试重用常量。 因为某些值不应该用作键（nil 不能是键，整数键可以用浮点键折叠），
+// 调用者必须提供一个有用的“键”来索引缓存。
 static int addk (FuncState *fs, TValue *key, TValue *v) {
   lua_State *L = fs->ls->L;
   Proto *f = fs->f;
+  // 设置键，如有对应的值，返回，没有就新建
   TValue *idx = luaH_set(L, fs->ls->h, key);  /* index scanner table */
   int k, oldsize;
+  // 索引本来就存在 
   if (ttisinteger(idx)) {  /* is there an index there? */
+    // 取得索引
     k = cast_int(ivalue(idx));
     /* correct value? (warning: must distinguish floats from integers!) */
+    // 索引在常量数目范围内，类型和索引k的相同，并且值也相等，就重用索引
     if (k < fs->nk && ttype(&f->k[k]) == ttype(v) &&
                       luaV_rawequalobj(&f->k[k], v))
       return k;  /* reuse index */
   }
   /* constant not found; create a new entry */
+  // 常量表中没有找到，就创建一个新的条目
   oldsize = f->sizek;
+  // 将当前的数目当前索引
   k = fs->nk;
   /* numerical value does not need GC barrier;
      table has no metatable, so it does not need to invalidate cache */
   setivalue(idx, k);
+
   luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");
+  // 函数原型表的和解析中常量列表相差的条目，都设置为nil
   while (oldsize < f->sizek) setnilvalue(&f->k[oldsize++]);
+  // 设置f[k]=v
   setobj(L, &f->k[k], v);
+  // 增加数量
   fs->nk++;
   luaC_barrier(L, f, v);
   return k;
@@ -502,9 +545,12 @@ static int addk (FuncState *fs, TValue *key, TValue *v) {
 /*
 ** Add a string to list of constants and return its index.
 */
+// 将字符串添加到常量列表并返回其索引
 int luaK_stringK (FuncState *fs, TString *s) {
+  // 取出字符串的值，设置到临时变量o中
   TValue o;
   setsvalue(fs->ls->L, &o, s);
+  // 将o加入到字符串常量列表中，使用字符串本身当键
   return addk(fs, &o, &o);  /* use string itself as key */
 }
 
@@ -515,6 +561,8 @@ int luaK_stringK (FuncState *fs, TString *s) {
 ** same value; conversion to 'void*' is used only for hashing, so there
 ** are no "precision" problems.
 */
+// 将整数添加到常量列表并返回其索引。整数使用userdata作为键以避免与具有相同值的浮点数发生冲突；
+// 转换为“void*”仅用于hash，因此不存在“精度”问题。
 int luaK_intK (FuncState *fs, lua_Integer n) {
   TValue k, o;
   setpvalue(&k, cast(void*, cast(size_t, n)));
@@ -525,6 +573,7 @@ int luaK_intK (FuncState *fs, lua_Integer n) {
 /*
 ** Add a float to list of constants and return its index.
 */
+// 增加一个浮点数到常量列表，并返回其索引
 static int luaK_numberK (FuncState *fs, lua_Number r) {
   TValue o;
   setfltvalue(&o, r);
@@ -535,6 +584,7 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
 /*
 ** Add a boolean to list of constants and return its index.
 */
+// 加入一个boolean值到常量列表，并返回其索引
 static int boolK (FuncState *fs, int b) {
   TValue o;
   setbvalue(&o, b);
@@ -545,10 +595,12 @@ static int boolK (FuncState *fs, int b) {
 /*
 ** Add nil to list of constants and return its index.
 */
+// 增加nil值到常量列表，并返回其索引
 static int nilK (FuncState *fs) {
   TValue k, v;
   setnilvalue(&v);
   /* cannot use nil as key; instead use table itself to represent nil */
+  // 不能用nil作为key，用table作为nil的key值
   sethvalue(fs->ls->L, &k, fs->ls->h);
   return addk(fs, &k, &v);
 }
@@ -600,6 +652,19 @@ void luaK_setoneret (FuncState *fs, expdesc *e) {
 /*
 ** Ensure that expression 'e' is not a variable.
 */
+// luaK_dischargevars函数为变量表达式生成估值计算的指令。对于VLOCAL类型，值就存在于局部变量对应的寄存器中，
+// 不需要生成任何获取指令，也不需要分配寄存器来存储临时值。VLOCAL被转化为VNONRELOC类型，代表已经为这个表达
+// 式生成了指令，并且也分配了寄存器保存这个值。对于VUPVAL类型，需要产生指令OP_GETUPVAL来获取其值。
+// 而对于VINDEXED类型，根据vt的不同，需要产生OP_GETTABLE或者OP_GETTABUP指令来获取其值。
+// VUPVAL和VINDEXED都被转化为VRELOCABLE类型，表示获取指令已经生成，但是指令的目标寄存器(A)还没有确定，
+// 等待回填。回填后，VRELOCABLE类型会转化成VNONRELOC类型
+// 变量表达式除了用来获取变量值，还有另外一个用途，就是在赋值语句中当作赋值的目标，
+// 也就是将其他表达式的值存储到这个变量表达式中
+
+// 确保表达式e不是一个变量
+// 当需要使用一个非寄存器变量时，需要先通过luaK_dischargevars来保证它是“万事俱备，只欠寄存器分配”，
+// 在luaK_dischargevars函数中，如果变量是在upvalue中，则需要先生成从up列表中加载该变量的机器指令，
+// 但是并没有分配寄存器，也即是它的结果可以放在任意寄存器中，之后该表达式的类型为VRELOCABLE
 void luaK_dischargevars (FuncState *fs, expdesc *e) {
   switch (e->k) {
     // 已经在寄存器里了
@@ -650,6 +715,7 @@ void luaK_dischargevars (FuncState *fs, expdesc *e) {
 // 确保表达式值在寄存器“reg”中（因此'e' 将成为不可重定位的表达式）。
 static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
   luaK_dischargevars(fs, e);
+  // 表达式的值是常值, 这里生成指令并回填R(A) 
   switch (e->k) {
     case VNIL: {
       luaK_nil(fs, reg, 1);
@@ -698,9 +764,13 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
 /*
 ** Ensures expression value is in any register.
 */
+// 保证表达式的值都在寄存器上 
 static void discharge2anyreg (FuncState *fs, expdesc *e) {
+  // 如果还确定寄存器
   if (e->k != VNONRELOC) {  /* no fixed register yet? */
+    // 分配一个寄存器
     luaK_reserveregs(fs, 1);  /* get a register */
+    // 然后将值放入寄存器中 
     discharge2reg(fs, e, fs->freereg-1);  /* put value there */
   }
 }
@@ -733,7 +803,10 @@ static int need_value (FuncState *fs, int list) {
 ** its final position or to "load" instructions (for those tests
 ** that do not produce values).
 */
+// 确保最终表达式结果（包括其跳转列表的结果）在寄存器“reg”中。如果表达式有跳转，
+// 需要将这些跳转修补到其最终位置或“加载”指令（对于那些不产生值的测试）
 static void exp2reg (FuncState *fs, expdesc *e, int reg) {
+  // 确保表达式的值在reg寄存器中
   discharge2reg(fs, e, reg);
   if (e->k == VJMP)  /* expression itself is a test? */
     luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
@@ -761,9 +834,11 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
 ** Ensures final expression result (including results from its jump
 ** lists) is in next available register.
 */
+// 确保表达式的结果（包括从它的跳转表的结果）保存在下一个可用的寄存器中
 void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
 	// 根据变量所在的不同作用域（ local, global, upvalue )来决定这个变量是否需要重定向。
   luaK_dischargevars(fs, e);
+  // 释放刚用过的寄存器
   freeexp(fs, e);
   // 调用luaK_reserveregs 函数，分配可用的函数寄存器空间，得到这个空间对应的寄存器
   // 索引。有了空间，才能存储变量。
@@ -779,17 +854,26 @@ void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
 ** Ensures final expression result (including results from its jump
 ** lists) is in some (any) register and return that register.
 */
+// LOAD_XXX 加载指令
+// 将表达式的值加载到寄存器中(eg:VGLOBAL, VINDEXED)，已加载到reg中的则无需此步骤(VNONRELOC)),
+// 确保最终表达式结果（包括其跳转列表的结果）在某个（任何）寄存器中并返回该寄存器。
 int luaK_exp2anyreg (FuncState *fs, expdesc *e) {
+  // 对表达式生成估值指令
   luaK_dischargevars(fs, e);
+  // 表达式有一个寄存器了
   if (e->k == VNONRELOC) {  /* expression already has a register? */
+    // 没用调整，直接返回寄存器
     if (!hasjumps(e))  /* no jumps? */
       return e->u.info;  /* result is already in a register */
+    // 不是一个局部变量
     if (e->u.info >= fs->nactvar) {  /* reg. is not a local? */
       exp2reg(fs, e, e->u.info);  /* put final result in it */
       return e->u.info;
     }
   }
+  // e的src值还不在reg则将其存入reg 
   luaK_exp2nextreg(fs, e);  /* otherwise, use next available register */
+  // 返回
   return e->u.info;
 }
 
@@ -808,10 +892,14 @@ void luaK_exp2anyregup (FuncState *fs, expdesc *e) {
 ** Ensures final expression result is either in a register or it is
 ** a constant.
 */
+// 确保最终表达式结果在寄存器中或者是常量
 void luaK_exp2val (FuncState *fs, expdesc *e) {
+  // 是否有跳转
   if (hasjumps(e))
+    // 将表达式的值加载到寄存器中(eg:VGLOBAL, VINDEXED)，
     luaK_exp2anyreg(fs, e);
   else
+    // luaK_dischargevars函数为变量表达式生成估值计算的指令
     luaK_dischargevars(fs, e);
 }
 
@@ -822,7 +910,10 @@ void luaK_exp2val (FuncState *fs, expdesc *e) {
 ** in the range of R/K indices).
 ** Returns R/K index.
 */
+// 确保最终表达式结果在有效的R/K索引中（即，它在寄存器中或在索引在
+// R/K索引范围内的'k'中）。返回R/K指数。
 int luaK_exp2RK (FuncState *fs, expdesc *e) {
+  // 确保最终表达式结果在寄存器中或者是常量
   luaK_exp2val(fs, e);
   switch (e->k) {  /* move constants to 'k' */
     case VTRUE: e->u.info = boolK(fs, 1); goto vk;
@@ -889,10 +980,13 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
 /*
 ** Negate condition 'e' (where 'e' is a comparison).
 */
+// 当e是一个条件比较，否定条件'e'
 static void negatecondition (FuncState *fs, expdesc *e) {
+  // 找到条件比较的指令
   Instruction *pc = getjumpcontrol(fs, e->u.info);
   lua_assert(testTMode(GET_OPCODE(*pc)) && GET_OPCODE(*pc) != OP_TESTSET &&
                                            GET_OPCODE(*pc) != OP_TEST);
+  // 将原来的值取反
   SETARG_A(*pc, !(GETARG_A(*pc)));
 }
 
@@ -993,25 +1087,34 @@ void luaK_goiffalse (FuncState *fs, expdesc *e) {
 /*
 ** Code 'not e', doing constant folding.
 */
+// 代码：not e（e为表达式），常量折叠
 static void codenot (FuncState *fs, expdesc *e) {
+  // 对表达式进行预估指令生成
   luaK_dischargevars(fs, e);
   switch (e->k) {
+      // nil和false取反后为true
     case VNIL: case VFALSE: {
       e->k = VTRUE;  /* true == not nil == not false */
       break;
     }
+    // 常量表达式，浮点数，整数和true，取反后都是false
     case VK: case VKFLT: case VKINT: case VTRUE: {
       e->k = VFALSE;  /* false == not "x" == not 0.5 == not 1 == not true */
       break;
     }
+    // 处理跳转 
     case VJMP: {
+      // 对跳转指令中的条件取反
       negatecondition(fs, e);
       break;
     }
     case VRELOCABLE:
     case VNONRELOC: {
+      // 保证表达式的值都在寄存器上 
       discharge2anyreg(fs, e);
+      // 释放不用的寄存器
       freeexp(fs, e);
+      // 生成指令
       e->u.info = luaK_codeABC(fs, OP_NOT, 0, e->u.info, 0);
       e->k = VRELOCABLE;
       break;
@@ -1020,6 +1123,7 @@ static void codenot (FuncState *fs, expdesc *e) {
   }
   /* interchange true and false lists */
   { int temp = e->f; e->f = e->t; e->t = temp; }
+ 
   removevalues(fs, e->f);  /* values are useless when negated */
   removevalues(fs, e->t);
 }
@@ -1046,8 +1150,11 @@ void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
 // 如果展开会引发错误，则返回 false。
 // 按位运算需要可转换为整数的操作数；
 // 除法运算不能有 0 作为除数。
+
+// 判断操作符是否有效
 static int validop (int op, TValue *v1, TValue *v2) {
   switch (op) {
+      // 下面的操作符都是位运算相关，需要操作数都是整数
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
       lua_Integer i;
@@ -1066,20 +1173,25 @@ static int validop (int op, TValue *v1, TValue *v2) {
 ** Try to "constant-fold" an operation; return 1 iff successful.
 ** (In this case, 'e1' has the final result.)
 */
-// 尝试常量展开一个表达式，如果成功就返回1
+// 尝试常量折叠操作，如果成功就返回1
 // (在这种情况下，'e1'有最后的结果)
 static int constfolding (FuncState *fs, int op, expdesc *e1,
                                                 const expdesc *e2) {
   TValue v1, v2, res;
+  // 非数字操作符折叠可能不安全
   // 两个变量是否能转化成数字，操作符是否可用
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
+  // 进行数学运算 
   luaO_arith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */
+  // 结果为整数
   if (ttisinteger(&res)) {
     e1->k = VKINT;
     e1->u.ival = ivalue(&res);
   }
+  // 结果为浮点数
   else {  /* folds neither NaN nor 0.0 (to avoid problems with -0.0) */
+    // 如果出现Nan和0.0，不进行常量折叠（防止出现-0.0的情况）
     lua_Number n = fltvalue(&res);
     if (luai_numisnan(n) || n == 0)
       return 0;
@@ -1094,12 +1206,18 @@ static int constfolding (FuncState *fs, int op, expdesc *e1,
 ** Emit code for unary expressions that "produce values"
 ** (everything but 'not').
 ** Expression to produce final result will be encoded in 'e'.
-*/
+*/ 
+// 为产生值一元表达式产生代码（不考虑not）。 表达式产生的结果最终赋值给“e”。
 static void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line) {
+  // 将表达式的值加载到寄存器中
   int r = luaK_exp2anyreg(fs, e);  /* opcodes operate only on registers */
+  // 释放用过的寄存器 
   freeexp(fs, e);
+  // 生成字节码
   e->u.info = luaK_codeABC(fs, op, 0, r, 0);  /* generate opcode */
+  // 所有的操作是可以重定位
   e->k = VRELOCABLE;  /* all those operations are relocatable */
+  // 修正当前位置关联的行号信息 
   luaK_fixline(fs, line);
 }
 
@@ -1157,16 +1275,23 @@ static void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2) {
 /*
 ** Aplly prefix operation 'op' to expression 'e'.
 */
+// 应用前缀操作符op到表达式e上
 void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line) {
+  // 虚构第二个假的操作数
   static const expdesc ef = {VKINT, {0}, NO_JUMP, NO_JUMP};
   switch (op) {
     case OPR_MINUS: case OPR_BNOT:  /* use 'ef' as fake 2nd operand */
+      // 使用'ef'作为假的第二个操作数
+      // 进行常量折叠
       if (constfolding(fs, op + LUA_OPUNM, e, &ef))
         break;
       /* FALLTHROUGH */
+    // 取长度
     case OPR_LEN:
+      // 为产生值一元表达式产生代码（不考虑not)
       codeunexpval(fs, cast(OpCode, op + OP_UNM), e, line);
       break;
+    // not表达式编码
     case OPR_NOT: codenot(fs, e); break;
     default: lua_assert(0);
   }
@@ -1268,6 +1393,7 @@ void luaK_posfix (FuncState *fs, BinOpr op,
 /*
 ** Change line information associated with current position.
 */
+// 修正当前位置关联的行号信息
 void luaK_fixline (FuncState *fs, int line) {
   fs->f->lineinfo[fs->pc - 1] = line;
 }
@@ -1280,18 +1406,30 @@ void luaK_fixline (FuncState *fs, int line) {
 ** 'tostore' is number of values (in registers 'base + 1',...) to add to
 ** table (or LUA_MULTRET to add up to stack top).
 */
+// 发出 SETLIST 指令。
+// 'base' 是保存表的寄存器； 
+// 'nelems' 是#table 加上那些现在要存储的；'
+//  tostore' 是要添加到表（或 LUA_MULTRET 以添加到堆栈顶部）的值的数量（在寄存器'base + 1'中，...）。
 void luaK_setlist (FuncState *fs, int base, int nelems, int tostore) {
+  // 计算第几次的setlist
   int c =  (nelems - 1)/LFIELDS_PER_FLUSH + 1;
+  // 这次setlist的数目
   int b = (tostore == LUA_MULTRET) ? 0 : tostore;
   lua_assert(tostore != 0 && tostore <= LFIELDS_PER_FLUSH);
+  // 数量比较少，直接编码SETLIST
   if (c <= MAXARG_C)
     luaK_codeABC(fs, OP_SETLIST, base, b, c);
+  // 数量很多了，需要增加额外的指令辅助
   else if (c <= MAXARG_Ax) {
+    // 构造setlist指令
     luaK_codeABC(fs, OP_SETLIST, base, b, 0);
+    // 构造“额外参数”指令（格式为“iAx”）
     codeextraarg(fs, c);
   }
+  // 数量太多，包语法错误
   else
     luaX_syntaxerror(fs->ls, "constructor too long");
+  // 释放base以后的寄存器
   fs->freereg = base + 1;  /* free registers with list values */
 }
 

@@ -16,7 +16,7 @@
 #define EOZ	(-1)			/* end of stream */
 
 typedef struct Zio ZIO;
-
+// 取得当前的字符，如果没取完，直接移动到下一个指针，如果取完了， 使用reader函数读取数据来填充Zio结构中的缓冲区数据
 #define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : luaZ_fill(z))
 
 
@@ -32,6 +32,7 @@ typedef struct Mbuffer {
 #define luaZ_sizebuffer(buff)	((buff)->buffsize)
 #define luaZ_bufflen(buff)	((buff)->n)
 
+// 从buff的末尾删除i个字符
 #define luaZ_buffremove(buff,i)	((buff)->n -= (i))
 #define luaZ_resetbuffer(buff) ((buff)->n = 0)
 

@@ -27,28 +27,37 @@ typedef enum {
   // 当'expdesc'描述一个列表的最后一个表达式时，这种表示一个空列表（所以，没有表达式） 
   VVOID,  /* when 'expdesc' describes the last expression a list,
              this kind means an empty list (so, no expression) */
+  // nil类型
   VNIL,  /* constant nil */
+  // 表达式是TRUE
   VTRUE,  /* constant true */
+  // 表达式是FALSE
   VFALSE,  /* constant false */
+  // 表达式是常量类型，expdesc的info字段表示，这个常量是常量表k中的哪个值
   VK,  /* constant in 'k'; info = index of constant in 'k' */
+  // 浮点类型
   VKFLT,  /* floating constant; nval = numerical float value */
+  // 整数类型
   VKINT,  /* integer constant; nval = numerical integer value */
-  // 表达式在固定寄存器中具有其值；info=结果寄存器
+  // 表达式已经在某个寄存器上了，expdesc的info字段，表示该寄存器的位置
   VNONRELOC,  /* expression has its value in a fixed register;
                  info = result register */
-  // 局部变量
+  // 局部变量,expdesc的info字段，表示该local变量，在栈中的位置
   VLOCAL,  /* local variable; info = local register */
-  // upvalue变量
+  // upvalue变量,expdesc的info字段，表示Upvalue数组的索引
   VUPVAL,  /* upvalue variable; info = index of upvalue in 'upvalues' */
   // 索引变量
   VINDEXED,  /* indexed variable;                               // 索引变量
                 ind.vt = whether 't' is register or upvalue;    // 't'是一个寄存器或者一个upvalue
                 ind.t = table register or upvalue;              // table寄存器或者upvalue
                 ind.idx = key's R/K index */                    // 键的R/K索引
-  VJMP,  /* expression is a test/comparison;
-            info = pc of corresponding jump instruction */
+  VJMP,  /* expression is a test/comparison;            // 表达式是测试/比较；
+            info = pc of corresponding jump instruction */ // info = 对应跳转指令的pc
+  // 表达式可以把结果放到任意的寄存器上，expdesc的info表示的是instruction pc
   VRELOCABLE,  /* expression can put result in any register;
                   info = instruction pc */
+  // 达式是函数调用，expdesc中的info字段，表示的是instruction pc
+  // 也就是它指向Proto code列表的哪个指令
   VCALL,  /* expression is a function call; info = instruction pc */
   VVARARG  /* vararg expression; info = instruction pc */
 } expkind;
@@ -65,21 +74,29 @@ typedef struct expdesc {
   union {
     lua_Integer ival;    /* for VKINT */
     lua_Number nval;  /* for VKFLT */
-    // 一般用途
+    // 而info根据不同的数据类型各自表示不同的信息,这些信息都可以在expkind enum的注释中看到:
     int info;  /* for generic use */
     struct {  /* for indexed variables (VINDEXED) */
+	  // 常量表k或者是寄存器的索引，这个索引指向的值就是被取出值得key
+	  // 不论t是Upvalue还是table的索引，它取出的值一般是一个table
       short idx;  /* index (R/K) */
+      // 表示table或者是UpVal的索引
       lu_byte t;  /* table (register or upvalue) */
+      // 标识上一个字段't'是upvalue(VUPVAL) 还是寄存器(VLOCAL)
       lu_byte vt;  /* whether 't' is register (VLOCAL) or upvalue (VUPVAL) */
     } ind;
   } u;
+  // 为true退出的补丁列表
   int t;  /* patch list of 'exit when true' */
+  // 为false退出的补丁列表
   int f;  /* patch list of 'exit when false' */
 } expdesc;
 
 
 /* description of active local variable */
+// 局部变量的描述
 typedef struct Vardesc {
+  // 栈上的变量索引
   short idx;  /* variable index in stack */
 } Vardesc;
 
@@ -102,6 +119,7 @@ typedef struct Labellist {
 
 
 /* dynamic structures used by the parser */
+// 分析器使用的动态数据结构
 typedef struct Dyndata {
   struct {  /* list of active local variables */
     Vardesc *arr;
@@ -124,8 +142,10 @@ typedef struct FuncState {
   Proto *f;  /* current function header */
   // 包含该函数的函数(外包函数，它指向本函数环境的父函数的FuncState指针。)
   struct FuncState *prev;  /* enclosing function */
+  // 词法分析器
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
+  // Proto结构的code数组中，下一个可被写入的位置下标
   int pc;  /* next position to code (equivalent to 'ncode') */
   // 上一个跳转的标签
   int lasttarget;   /* 'label' of last 'jump label' */

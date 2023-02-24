@@ -485,7 +485,7 @@ typedef struct Proto {
   int sizecode;
   // lineinfo的大小
   int sizelineinfo;
-  // 内嵌函数的数目
+  // 内嵌函数数组的数目
   int sizep;  /* size of 'p' */
   int sizelocvars;
   int linedefined;  /* debug information  */
