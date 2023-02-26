@@ -121,12 +121,17 @@ typedef struct Labellist {
 /* dynamic structures used by the parser */
 // 分析器使用的动态数据结构
 typedef struct Dyndata {
+  // 激活的局部变量的列表
   struct {  /* list of active local variables */
     Vardesc *arr;
+    // arr中有值的个数
     int n;
+    // arr整个的大小
     int size;
   } actvar;
+  // 代处理的goto列表
   Labellist gt;  /* list of pending gotos */
+  // 激活的标签列表
   Labellist label;   /* list of active labels */
 } Dyndata;
 
@@ -157,7 +162,7 @@ typedef struct FuncState {
   int np;  /* number of elements in 'p' */
   // 第一个局部变量的索引（在Dyndata数组中）
   int firstlocal;  /* index of first local var (in Dyndata array) */
-  // Proto中的locvars的数目
+  // Proto中的局部变量的数目
   short nlocvars;  /* number of elements in 'f->locvars' */
   // 激活的局部变量的数目
   lu_byte nactvar;  /* number of active local variables */

@@ -25,10 +25,12 @@ int luaZ_fill (ZIO *z) {
   lua_State *L = z->L;
   const char *buff;
   lua_unlock(L);
+  // 读取数据
   buff = z->reader(L, z->data, &size);
   lua_lock(L);
   if (buff == NULL || size == 0)
     return EOZ;
+  // 返回第一个字符，并且将p往后移，n也设置成size-1
   z->n = size - 1;  /* discount char being returned */
   z->p = buff;
   return cast_uchar(*(z->p++));

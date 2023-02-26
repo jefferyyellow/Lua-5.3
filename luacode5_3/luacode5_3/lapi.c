@@ -1077,6 +1077,7 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
   int status;
   lua_lock(L);
   if (!chunkname) chunkname = "?";
+  // 初始化缓存管理结构ZIO
   luaZ_init(L, &z, reader, data);
   // 分析器分析
   status = luaD_protectedparser(L, &z, chunkname, mode);

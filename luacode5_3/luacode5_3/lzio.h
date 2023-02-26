@@ -52,7 +52,7 @@ LUAI_FUNC size_t luaZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes */
 
 
 /* --------- Private Part ------------------ */
-
+// 缓存管理结构
 struct Zio {
   size_t n;			/* bytes still unread */ // 缓冲区还有多少个字节没有读取
   const char *p;		/* current position in buffer */ // 缓冲区可以读取的字节开始处

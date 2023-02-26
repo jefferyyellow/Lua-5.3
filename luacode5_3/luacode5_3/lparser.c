@@ -31,6 +31,7 @@
 
 /* maximum number of local variables per function (must be smaller
    than 250, due to the bytecode format) */
+// 每个函数最大的局部变量数目（由于字节码格式的原因，必须小于250）
 #define MAXVARS		200
 
 // 多个返回值
@@ -175,29 +176,36 @@ static void checkname (LexState *ls, expdesc *e) {
   codestring(ls, e, str_checkname(ls));
 }
 
-
+// 注册新的局部变量
 static int registerlocalvar (LexState *ls, TString *varname) {
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
   int oldsize = f->sizelocvars;
+  // 检查是否需要扩展局部变量数组
   luaM_growvector(ls->L, f->locvars, fs->nlocvars, f->sizelocvars,
                   LocVar, SHRT_MAX, "local variables");
+  // 如果扩展了局部变量数组，将新扩展的部分的变量名都设置为NULL
   while (oldsize < f->sizelocvars)
     f->locvars[oldsize++].varname = NULL;
+  // 设置新的局部变量
   f->locvars[fs->nlocvars].varname = varname;
   luaC_objbarrier(ls->L, f, varname);
   return fs->nlocvars++;
 }
 
-
+// 新建一个局部变量
 static void new_localvar (LexState *ls, TString *name) {
   FuncState *fs = ls->fs;
   Dyndata *dyd = ls->dyd;
+  // 注册新的局部变量，reg是栈上的索引
   int reg = registerlocalvar(ls, name);
+  // 检查当前函数的局部变量是否超过限制
   checklimit(fs, dyd->actvar.n + 1 - fs->firstlocal,
                   MAXVARS, "local variables");
+  // 检查是否需要扩张局部变量的列表
   luaM_growvector(ls->L, dyd->actvar.arr, dyd->actvar.n + 1,
                   dyd->actvar.size, Vardesc, MAX_INT, "local variables");
+  // 放入局部变量列表中
   dyd->actvar.arr[dyd->actvar.n++].idx = cast(short, reg);
 }
 
@@ -220,7 +228,9 @@ static LocVar *getlocvar (FuncState *fs, int i) {
 // 调整局部变量
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
+  // 调整局部变量的数目
   fs->nactvar = cast_byte(fs->nactvar + nvars);
+  // 调整局部变量开始的字节码记录
   for (; nvars; nvars--) {
     getlocvar(fs, fs->nactvar - nvars)->startpc = fs->pc;
   }
@@ -479,7 +489,7 @@ static void movegotosout (FuncState *fs, BlockCnt *bl) {
   }
 }
 
-
+// 进入代码块，初始化代码块数据结构
 static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
   bl->isloop = isloop;
   bl->nactvar = fs->nactvar;
@@ -553,7 +563,7 @@ static Proto *addprototype (LexState *ls) {
     while (oldsize < f->sizep)
       f->p[oldsize++] = NULL;
   }
-  // 创建一个新的函数原型
+  // 创建一个新的函数原型,并加入原型列表
   f->p[fs->np++] = clp = luaF_newproto(L);
   luaC_objbarrier(L, f, clp);
   return clp;
@@ -566,9 +576,12 @@ static Proto *addprototype (LexState *ls) {
 ** so that, if it invokes the GC, the GC knows which registers
 ** are in use at that time.
 */
+// 在父函数中创建新闭包的代码指令。OP_CLOSURE指令必须使用最后一个可用的寄存器，
+// 这样，如果它调用GC，GC就会知道当时正在使用哪些寄存器。
 static void codeclosure (LexState *ls, expdesc *v) {
   FuncState *fs = ls->fs->prev;
   init_exp(v, VRELOCABLE, luaK_codeABx(fs, OP_CLOSURE, 0, fs->np - 1));
+  // 确保表达式的结果（包括从它的跳转表的结果）保存在下一个可用的寄存器中
   luaK_exp2nextreg(fs, v);  /* fix it at the last register */
 }
 
@@ -595,15 +608,18 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   f = fs->f;
   f->source = ls->source;
   f->maxstacksize = 2;  /* registers 0/1 are always valid */
+  // 进入代码块，初始化代码块数据结构
   enterblock(fs, bl, 0);
 }
 
-
+// 函数结束处理，用于将最后分析的结果保存到Proto结构体中
 static void close_func (LexState *ls) {
   lua_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
+  // 编码一个返回指令，处理函数返回结果
   luaK_ret(fs, 0, 0);  /* final return */
+  // 离开代码块
   leaveblock(fs);
   luaM_reallocvector(L, f->code, f->sizecode, fs->pc, Instruction);
   f->sizecode = fs->pc;
@@ -618,6 +634,7 @@ static void close_func (LexState *ls) {
   luaM_reallocvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
   f->sizeupvalues = fs->nups;
   lua_assert(fs->bl == NULL);
+  // 切回到上一个
   ls->fs = fs->prev;
   luaC_checkGC(L);
 }
@@ -879,18 +896,22 @@ static void constructor (LexState *ls, expdesc *t) {
 /* }====================================================================== */
 
 
-
+// 分析参数列表
 static void parlist (LexState *ls) {
   /* parlist -> [ param { ',' param } ] */
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
   int nparams = 0;
   f->is_vararg = 0;
+  // 参数列表不为空
   if (ls->t.token != ')') {  /* is 'parlist' not empty? */
     do {
       switch (ls->t.token) {
+        // 参数名
         case TK_NAME: {  /* param -> NAME */
+          // 检查参数名，然后新建一个局部变量
           new_localvar(ls, str_checkname(ls));
+          // 记录有变量名的变量的数目
           nparams++;
           break;
         }
@@ -905,8 +926,11 @@ static void parlist (LexState *ls) {
       }
     } while (!f->is_vararg && testnext(ls, ','));
   }
+  // 调整局部变量
   adjustlocalvars(ls, nparams);
+  // 得到固定参数的个数
   f->numparams = cast_byte(fs->nactvar);
+  // 给参数列表预定寄存器
   luaK_reserveregs(fs, fs->nactvar);  /* reserve register for parameters */
 }
 
@@ -917,22 +941,30 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   BlockCnt bl;
   // 创建一个新的函数原型
   new_fs.f = addprototype(ls);
+  // 记录函数开始的行号
   new_fs.f->linedefined = line;
-  // 处理函数原型的信息
+  // 处理函数原型的初始信息
   open_func(ls, &new_fs, &bl);
+  // 跳过(
   checknext(ls, '(');
   // 是否为一个方法
   if (ismethod) {
-    // 创建self变量
+    // 创建self局部变量
     new_localvarliteral(ls, "self");  /* create 'self' parameter */
+    // 将self局部变量加入到局部变量列表中
     adjustlocalvars(ls, 1);
   }
-  // 参数列表
+  // 分析参数列表
   parlist(ls);
+  // 确认后面是)，并且跳过
   checknext(ls, ')');
+  // 开始语句
   statlist(ls);
+  // 函数定义结束的行号
   new_fs.f->lastlinedefined = ls->linenumber;
+  // 检查后面是否是函数结尾的Token
   check_match(ls, TK_END, TK_FUNCTION, line);
+  // 函数结束指令
   codeclosure(ls, e);
   // 分析完毕之后调用close_func函数，用于将最后分析的结果保存到Proto结构体中
   close_func(ls);
@@ -1027,7 +1059,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
   }
 }
 
-
+// 主要用来处理赋值变量名称，判断变量的类型：局部变量、全局变量、Table格式、函数等。
 static void suffixedexp (LexState *ls, expdesc *v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
@@ -1121,6 +1153,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
       body(ls, v, 0, ls->linenumber);
       return;
     }
+    // 默认处理，主要用来处理赋值变量名称，判断变量的类型：局部变量、全局变量、Table格式、函数等。
     default: {
       suffixedexp(ls, v);
       return;

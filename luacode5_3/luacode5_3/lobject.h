@@ -459,7 +459,7 @@ typedef struct Upvaldesc {
 typedef struct LocVar {
   // 变量名
   TString *varname;
-  // 变量激活的第一点
+  // 变量激活的第一个字节码处
   int startpc;  /* first point where variable is active */
   // 变量死亡的第一点
   int endpc;    /* first point where variable is dead */
@@ -485,10 +485,13 @@ typedef struct Proto {
   int sizecode;
   // lineinfo的大小
   int sizelineinfo;
-  // 内嵌函数数组的数目
+  // 内嵌函数数组的数目，可能有些是申请出来的赋初值为nil的
   int sizep;  /* size of 'p' */
+  // 局部变量数组的大小
   int sizelocvars;
+  // 函数定义的行号，就是代码中开始的行号
   int linedefined;  /* debug information  */
+  // 函数定义结束的行号
   int lastlinedefined;  /* debug information  */
   // 函数用到的常量
   TValue *k;  /* constants used by the function */
@@ -498,13 +501,13 @@ typedef struct Proto {
   struct Proto **p;  /* functions defined inside the function */
   // 从操作码到源代码的映射
   int *lineinfo;  /* map from opcodes to source lines (debug information) */
-  // 局部变量信息
+  // 局部变量信息数组
   LocVar *locvars;  /* information about local variables (debug information) */
   // upvalue的信息
   Upvaldesc *upvalues;  /* upvalue information */
   // 使用此原型最后创建的闭包
   struct LClosure *cache;  /* last-created closure with this prototype */
-  // 源码
+  // 函数的源文件和路径
   TString  *source;  /* used for debug information */
   GCObject *gclist;
 } Proto;

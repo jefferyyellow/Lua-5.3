@@ -62,6 +62,7 @@ typedef struct Token {
 
 /* state of the lexer plus state of the parser when shared by all
    functions */
+// 词法分析器的状态加上被所有函数共享时的解析器的状态
 typedef struct LexState {
   int current;  /* current character (charint) */ // 当前读出来的那个字符的ASCII码
   int linenumber;  /* input line counter */ // 当前处理到哪一行
