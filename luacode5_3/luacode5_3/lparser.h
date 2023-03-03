@@ -102,18 +102,27 @@ typedef struct Vardesc {
 
 
 /* description of pending goto statements and label statements */
+// 未处理的goto语句和标签语句的描述
 typedef struct Labeldesc {
+  // 标签的名字
   TString *name;  /* label identifier */
+  // 字节码所在的位置
   int pc;  /* position in code */
+  // 出现的行数
   int line;  /* line where it appeared */
+  // 它出现在当前块中的本地级别
   lu_byte nactvar;  /* local level where it appears in current block */
 } Labeldesc;
 
 
 /* list of labels or gotos */
+// 标签或goto列表
 typedef struct Labellist {
+  // 标签数组
   Labeldesc *arr;  /* array */
+  // 目前在用的数量
   int n;  /* number of entries in use */
+  // 数组大小（容量）
   int size;  /* array size */
 } Labellist;
 
@@ -129,9 +138,9 @@ typedef struct Dyndata {
     // arr整个的大小
     int size;
   } actvar;
-  // 代处理的goto列表
+  // 代处理的标签或goto列表
   Labellist gt;  /* list of pending gotos */
-  // 激活的标签列表
+  // 激活的标签或goto列表
   Labellist label;   /* list of active labels */
 } Dyndata;
 

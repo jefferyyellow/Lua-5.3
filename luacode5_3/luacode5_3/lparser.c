@@ -73,6 +73,7 @@ static void expr (LexState *ls, expdesc *v);
 
 
 /* semantic error */
+// 报语义错误
 static l_noret semerror (LexState *ls, const char *msg) {
   ls->t.token = 0;  /* remove "near <token>" from final message */
   luaX_syntaxerror(ls, msg);
@@ -104,7 +105,7 @@ static void checklimit (FuncState *fs, int v, int l, const char *what) {
   if (v > l) errorlimit(fs, l, what);
 }
 
-
+// 测试当前token是否为c，如果为c,取下一个token
 static int testnext (LexState *ls, int c) {
   if (ls->t.token == c) {
     luaX_next(ls);
@@ -209,11 +210,11 @@ static void new_localvar (LexState *ls, TString *name) {
   dyd->actvar.arr[dyd->actvar.n++].idx = cast(short, reg);
 }
 
-
+// 创建指定名字的新的局部变量
 static void new_localvarliteral_ (LexState *ls, const char *name, size_t sz) {
   new_localvar(ls, luaX_newstring(ls, name, sz));
 }
-
+// 创建指定名字的新的局部变量
 #define new_localvarliteral(ls,v) \
 	new_localvarliteral_(ls, "" v, (sizeof(v)/sizeof(char))-1)
 
@@ -236,9 +237,11 @@ static void adjustlocalvars (LexState *ls, int nvars) {
   }
 }
 
-
+// 删除局部变量
 static void removevars (FuncState *fs, int tolevel) {
+  // 调整激活的数目,(fs->nactvar - tolevel)为减少的数目
   fs->ls->dyd->actvar.n -= (fs->nactvar - tolevel);
+  // 设置删除部分的变量作用域结束的指令处
   while (fs->nactvar > tolevel)
     getlocvar(fs, --fs->nactvar)->endpc = fs->pc;
 }
@@ -391,13 +394,14 @@ static void enterlevel (LexState *ls) {
 // 离开C函数调用，减少调用堆栈中C函数的调用深度（层数）
 #define leavelevel(ls)	((ls)->L->nCcalls--)
 
-
+// 如果一个goto标签已经存在的，就应用到以前的语句中，然后把刚才加入的删除
 static void closegoto (LexState *ls, int g, Labeldesc *label) {
   int i;
   FuncState *fs = ls->fs;
   Labellist *gl = &ls->dyd->gt;
   Labeldesc *gt = &gl->arr[g];
   lua_assert(eqstr(gt->name, label->name));
+  // 如果是前面跳到后面的，并且还来close，报语义错误
   if (gt->nactvar < label->nactvar) {
     TString *vname = getlocvar(fs, gt->nactvar)->varname;
     const char *msg = luaO_pushfstring(ls->L,
@@ -405,8 +409,10 @@ static void closegoto (LexState *ls, int g, Labeldesc *label) {
       getstr(gt->name), gt->line, getstr(vname));
     semerror(ls, msg);
   }
+  // 回填跳转到‘target'的所有跳转列表的项
   luaK_patchlist(fs, gt->pc, label->pc);
   /* remove goto from pending list */
+  // 将未处理的最后一个删除掉
   for (i = g; i < gl->n - 1; i++)
     gl->arr[i] = gl->arr[i + 1];
   gl->n--;
@@ -416,18 +422,24 @@ static void closegoto (LexState *ls, int g, Labeldesc *label) {
 /*
 ** try to close a goto with existing labels; this solves backward jumps
 */
+// 尝试使用现有标签关闭goto； 这解决了向后跳跃
 static int findlabel (LexState *ls, int g) {
   int i;
   BlockCnt *bl = ls->fs->bl;
   Dyndata *dyd = ls->dyd;
   Labeldesc *gt = &dyd->gt.arr[g];
   /* check labels in current block for a match */
+  // 检查当前块中的标签是否匹配
   for (i = bl->firstlabel; i < dyd->label.n; i++) {
     Labeldesc *lb = &dyd->label.arr[i];
+    // 名字相等
     if (eqstr(lb->name, gt->name)) {  /* correct label? */
+      // 如果gt再后面，需要
       if (gt->nactvar > lb->nactvar &&
           (bl->upval || dyd->label.n > bl->firstlabel))
+        // 将“列表”中的所有跳转路径的close upvalues限制最大为指定的level
         luaK_patchclose(ls->fs, gt->pc, lb->nactvar);
+      // 如果一个goto标签已经存在的，就应用到以前的语句中，然后把刚才加入的删除
       closegoto(ls, g, lb);  /* close it */
       return 1;
     }
@@ -435,14 +447,16 @@ static int findlabel (LexState *ls, int g) {
   return 0;  /* label not found; cannot close goto */
 }
 
-
+// 创建一个新的标签入口
 static int newlabelentry (LexState *ls, Labellist *l, TString *name,
                           int line, int pc) {
   int n = l->n;
+  // 是否需要扩展数组
   luaM_growvector(ls->L, l->arr, n, l->size,
                   Labeldesc, SHRT_MAX, "labels/gotos");
   l->arr[n].name = name;
   l->arr[n].line = line;
+  // 当前激活的局部变量
   l->arr[n].nactvar = ls->fs->nactvar;
   l->arr[n].pc = pc;
   l->n = n + 1;
@@ -454,10 +468,12 @@ static int newlabelentry (LexState *ls, Labellist *l, TString *name,
 ** check whether new label 'lb' matches any pending gotos in current
 ** block; solves forward jumps
 */
+// 检查新标签 'lb' 是否与当前块中的任何未决 gotos 匹配； 解决向前跳跃
 static void findgotos (LexState *ls, Labeldesc *lb) {
   Labellist *gl = &ls->dyd->gt;
   int i = ls->fs->bl->firstgoto;
   while (i < gl->n) {
+    // 是否与当前的标签匹配,如果匹配就关闭
     if (eqstr(gl->arr[i].name, lb->name))
       closegoto(ls, i, lb);
     else
@@ -472,18 +488,25 @@ static void findgotos (LexState *ls, Labeldesc *lb) {
 ** the goto exits the scope of any variable (which can be the
 ** upvalue), close those variables being exited.
 */
+// 将挂起的 goto 导出到外部级别，以根据外部标签检查它们； 如果正在退出的块有upvalues，
+// 并且goto退出任何变量（可以是upvalues）的范围，则关闭正在退出的那些变量。
 static void movegotosout (FuncState *fs, BlockCnt *bl) {
   int i = bl->firstgoto;
   Labellist *gl = &fs->ls->dyd->gt;
   /* correct pending gotos to current block and try to close it
      with visible labels */
+  // 遍历退出块未处理的goto标签
   while (i < gl->n) {
     Labeldesc *gt = &gl->arr[i];
+    // gt所在的块外面的激活的局部变量还多
     if (gt->nactvar > bl->nactvar) {
+      // 退出的块中有upvalue,限制close upvalue的值为bl->nactvar
       if (bl->upval)
         luaK_patchclose(fs, gt->pc, bl->nactvar);
+      // 限制其到当前退出块外面激活的局部变量
       gt->nactvar = bl->nactvar;
     }
+    // 尝试使用现有标签关闭；
     if (!findlabel(fs->ls, i))
       i++;  /* move to next one */
   }
@@ -505,9 +528,12 @@ static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
 /*
 ** create a label named 'break' to resolve break statements
 */
+// 创建一个名为“break”的标签来解析 break 语句 
 static void breaklabel (LexState *ls) {
+  // 创建break标签
   TString *n = luaS_new(ls->L, "break");
   int l = newlabelentry(ls, &ls->dyd->label, n, 0, ls->fs->pc);
+  // 处理当前块中未决的标签
   findgotos(ls, &ls->dyd->label.arr[l]);
 }
 
@@ -515,6 +541,7 @@ static void breaklabel (LexState *ls) {
 ** generates an error for an undefined 'goto'; choose appropriate
 ** message when label name is a reserved word (which can only be 'break')
 */
+// 为未定义的“goto”生成错误； 当标签名称为保留字（只能是'break'）时选择合适的信息
 static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
   const char *msg = isreserved(gt->name)
                     ? "<%s> at line %d not inside a loop"
@@ -523,25 +550,37 @@ static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
   semerror(ls, msg);
 }
 
-
+// 离开当前的代码块
 static void leaveblock (FuncState *fs) {
   BlockCnt *bl = fs->bl;
   LexState *ls = fs->ls;
+  // 前一个代码块存在，并且当前的代码块中有upvalue
   if (bl->previous && bl->upval) {
     /* create a 'jump to here' to close upvalues */
+    // 创建一个原地跳转指令
     int j = luaK_jump(fs);
+    // 将“列表”中的所有跳转路径的close upvalues限制最大为指定的bl->nactvar
     luaK_patchclose(fs, j, bl->nactvar);
+    // 将j加入跳转到当前的列表中
     luaK_patchtohere(fs, j);
   }
+  // 如果是一个循环代码块
   if (bl->isloop)
+    // 关闭未处理的break标签
     breaklabel(ls);  /* close pending breaks */
+  // 返回到前一个代码块
   fs->bl = bl->previous;
+  // 删除代码块中的局部变量
   removevars(fs, bl->nactvar);
   lua_assert(bl->nactvar == fs->nactvar);
+  // 设置空闲寄存器的索引
   fs->freereg = fs->nactvar;  /* free registers */
+  // 删除局部的标签
   ls->dyd->label.n = bl->firstlabel;  /* remove local labels */
+  // 如果当前的块还是一个内部块,将未处理的goto标签的外层
   if (bl->previous)  /* inner block? */
     movegotosout(fs, bl);  /* update pending gotos to outer block */
+  // 如果已经是最外层的代码块了，还有未决的，报错
   else if (bl->firstgoto < ls->dyd->gt.n)  /* pending gotos in outer block? */
     undefgoto(ls, &ls->dyd->gt.arr[bl->firstgoto]);  /* error */
 }
@@ -651,6 +690,7 @@ static void close_func (LexState *ls) {
 ** 'until' closes syntactical blocks, but do not close scope,
 ** so it is handled in separate.
 */
+// 检查当前令牌是否在块的后续集中。 'until'关闭句法块，但不关闭作用域，因此单独处理。
 static int block_follow (LexState *ls, int withuntil) {
   switch (ls->t.token) {
     case TK_ELSE: case TK_ELSEIF:
@@ -676,14 +716,18 @@ static void statlist (LexState *ls) {
   }
 }
 
-
+// 表字段解析
 static void fieldsel (LexState *ls, expdesc *v) {
   /* fieldsel -> ['.' | ':'] NAME */
   FuncState *fs = ls->fs;
   expdesc key;
+  // 确保表达式的结果要么在寄存器上，要么在一个upvalue上 
   luaK_exp2anyregup(fs, v);
+  // 跳过点号（.）或者冒号（：）
   luaX_next(ls);  /* skip the dot or colon */
+  // 检查字段名
   checkname(ls, &key);
+  // 取字段t[name]
   luaK_indexed(fs, v, &key);
 }
 
@@ -983,28 +1027,38 @@ static int explist (LexState *ls, expdesc *v) {
   return n;
 }
 
-
+// 函数参数
 static void funcargs (LexState *ls, expdesc *f, int line) {
   FuncState *fs = ls->fs;
   expdesc args;
   int base, nparams;
+  // 处理函数参数
   switch (ls->t.token) {
+    // 表达式列表
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
       luaX_next(ls);
+      // 如果后面紧跟），表示参数列表为空
       if (ls->t.token == ')')  /* arg list is empty? */
         args.k = VVOID;
       else {
+        // 解析表达式列表
         explist(ls, &args);
+        // 设置多个返回值 
         luaK_setmultret(fs, &args);
       }
+      // 最后跟着一个匹配的)
       check_match(ls, ')', '(', line);
       break;
     }
+    // 函数参数是一个表
     case '{': {  /* funcargs -> constructor */
+      // 构造表的操作
       constructor(ls, &args);
       break;
     }
+    // 函数参数是一个字符串
     case TK_STRING: {  /* funcargs -> STRING */
+      // 生成字符串的字节码 
       codestring(ls, &args, ls->t.seminfo.ts);
       luaX_next(ls);  /* must use 'seminfo' before 'next' */
       break;
@@ -1015,14 +1069,19 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
   }
   lua_assert(f->k == VNONRELOC);
   base = f->u.info;  /* base register for call */
+  // 多返回值
   if (hasmultret(args.k))
     nparams = LUA_MULTRET;  /* open call */
   else {
     if (args.k != VVOID)
+      // 确保表达式的值保存在下一个寄存器中
       luaK_exp2nextreg(fs, &args);  /* close last argument */
+    // 得到参数的数目
     nparams = fs->freereg - (base+1);
   }
+  // 初始化表达式，生成函数调用的指令
   init_exp(f, VCALL, luaK_codeABC(fs, OP_CALL, base, nparams+1, 2));
+  // 修正当前位置关联的行号信息
   luaK_fixline(fs, line);
   fs->freereg = base+1;  /* call remove function and arguments and leaves
                             (unless changed) one result */
@@ -1037,18 +1096,24 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
 ** =======================================================================
 */
 
-
+// 基本表达式
 static void primaryexp (LexState *ls, expdesc *v) {
   /* primaryexp -> NAME | '(' expr ')' */
   switch (ls->t.token) {
+    // (expr)方式的表达式
     case '(': {
       int line = ls->linenumber;
+      // 跳过（
       luaX_next(ls);
+      // 解析表达式
       expr(ls, v);
+      // 是否有右边的括号）
       check_match(ls, ')', '(', line);
+      // luaK_dischargevars函数为变量表达式生成估值计算的指令 
       luaK_dischargevars(ls->fs, v);
       return;
     }
+    // 变量名
     case TK_NAME: {
       singlevar(ls, v);
       return;
@@ -1060,35 +1125,50 @@ static void primaryexp (LexState *ls, expdesc *v) {
 }
 
 // 主要用来处理赋值变量名称，判断变量的类型：局部变量、全局变量、Table格式、函数等。
+// 处理后缀表达式
 static void suffixedexp (LexState *ls, expdesc *v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
+  // 解析基本表达式
   primaryexp(ls, v);
   for (;;) {
     switch (ls->t.token) {
+      // 表字段
       case '.': {  /* fieldsel */
+        // 名字为索引取表字段
         fieldsel(ls, v);
         break;
       }
       case '[': {  /* '[' exp1 ']' */
         expdesc key;
+        // 确保表的表达式的结果要么在寄存器上，要么在一个upvalue上
         luaK_exp2anyregup(fs, v);
+        // 解析table中的索引([])中的表达式
         yindex(ls, &key);
+        // 创建一个表达式t[k]
         luaK_indexed(fs, v, &key);
         break;
       }
+      // 冒号的方式
       case ':': {  /* ':' NAME funcargs */
         expdesc key;
+        // 跳过冒号
         luaX_next(ls);
+        // 获取名字表达式的值
         checkname(ls, &key);
+        // 名字为索引取表字段
         luaK_self(fs, v, &key);
+        // 处理函数参数和调用
         funcargs(ls, v, line);
         break;
       }
+      // 函数参数
       case '(': case TK_STRING: case '{': {  /* funcargs */
+        // 确保函数参数在下一个寄存器里
         luaK_exp2nextreg(fs, v);
+        // 处理函数参数和调用
         funcargs(ls, v, line);
         break;
       }
@@ -1153,7 +1233,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
       body(ls, v, 0, ls->linenumber);
       return;
     }
-    // 默认处理，主要用来处理赋值变量名称，判断变量的类型：局部变量、全局变量、Table格式、函数等。
+    // 默认处理后缀表达式，主要用来处理赋值变量名称，判断变量的类型：局部变量、全局变量、Table格式、函数等。
     default: {
       suffixedexp(ls, v);
       return;
@@ -1179,7 +1259,7 @@ static UnOpr getunopr (int op) {
   }
 }
 
-
+// 得到二元操作符
 static BinOpr getbinopr (int op) {
   switch (op) {
     case '+': return OPR_ADD;
@@ -1215,6 +1295,7 @@ static const struct {
   lu_byte left;  /* left priority for each binary operator */
   // 右边优先级
   lu_byte right; /* right priority */
+  // 操作符的优先级
 } priority[] = {  /* ORDER OPR */
    {10, 10}, {10, 10},           /* '+' '-' */
    {11, 11}, {11, 11},           /* '*' '%' */
@@ -1283,10 +1364,12 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
     BinOpr nextop;
     int line = ls->linenumber;
     luaX_next(ls);
+    // 在读取第二个操作数之前处理二元运算op的第一个操作数v
     luaK_infix(ls->fs, op, v);
     /* read sub-expression with higher priority */
-    // 读取优先级更高的子表达式
+    // 读取优先级更高的子表达式到v2
     nextop = subexpr(ls, &v2, priority[op].right);
+    // 处理最后的结果
     luaK_posfix(ls->fs, op, v, &v2, line);
     op = nextop;
   }
@@ -1310,13 +1393,16 @@ static void expr (LexState *ls, expdesc *v) {
 ** =======================================================================
 */
 
-
+// 代码块处理
 static void block (LexState *ls) {
   /* block -> statlist */
   FuncState *fs = ls->fs;
   BlockCnt bl;
+  // 进入代码块
   enterblock(fs, &bl, 0);
+  // 语句列表处理
   statlist(ls);
+  // 离开代码块
   leaveblock(fs);
 }
 
@@ -1394,28 +1480,36 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   luaK_storevar(ls->fs, &lh->v, &e);
 }
 
-
+// 解析条件表达式
 static int cond (LexState *ls) {
   /* cond -> exp */
   expdesc v;
+  // 分析条件表达式
   expr(ls, &v);  /* read condition */
   if (v.k == VNIL) v.k = VFALSE;  /* 'falses' are all equal here */
+  // 如果条件为true就继续，否则跳转 
   luaK_goiftrue(ls->fs, &v);
   return v.f;
 }
 
-
+// goto语句处理
 static void gotostat (LexState *ls, int pc) {
   int line = ls->linenumber;
   TString *label;
   int g;
+  // 如果是goto
   if (testnext(ls, TK_GOTO))
+    // 得到要跳转的标签
     label = str_checkname(ls);
   else {
+    // 跳过break
     luaX_next(ls);  /* skip break */
+    // 生成break标签
     label = luaS_new(ls->L, "break");
   }
+  // 创建一个标签入口，加入到未处理列表中
   g = newlabelentry(ls, &ls->dyd->gt, label, line, pc);
+  // 如果标签已经定义则关闭它
   findlabel(ls, g);  /* close it if label already defined */
 }
 
@@ -1458,22 +1552,32 @@ static void labelstat (LexState *ls, TString *label, int line) {
   findgotos(ls, &ll->arr[l]);
 }
 
-
+// while语句处理
 static void whilestat (LexState *ls, int line) {
   /* whilestat -> WHILE cond DO block END */
   FuncState *fs = ls->fs;
   int whileinit;
   int condexit;
   BlockCnt bl;
+  // 跳过while
   luaX_next(ls);  /* skip WHILE */
+  // while开始的指令地址
   whileinit = luaK_getlabel(fs);
+  // 解析条件表达式，返回不满足条件的跳转指令地址 
   condexit = cond(ls);
+  // 进入代码块
   enterblock(fs, &bl, 1);
+  // 检查下一步token是否为do
   checknext(ls, TK_DO);
+  // 代码块处理 
   block(ls);
+  // 条件跳转到while开始处的指令
   luaK_jumpto(fs, whileinit);
+  // while代码块的结束
   check_match(ls, TK_END, TK_WHILE, line);
+  // 离开代码块
   leaveblock(fs);
+  // 填充跳转到不满足条件，跳出循环的指令
   luaK_patchtohere(fs, condexit);  /* false conditions finish the loop */
 }
 
@@ -1497,7 +1601,7 @@ static void repeatstat (LexState *ls, int line) {
   leaveblock(fs);  /* finish loop */
 }
 
-
+// 解析表达式的值，将结果放入寄存器中，返回寄存器索引
 static int exp1 (LexState *ls) {
   expdesc e;
   int reg;
@@ -1508,7 +1612,7 @@ static int exp1 (LexState *ls) {
   return reg;
 }
 
-
+// for循环的循环体
 static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   /* forbody -> DO block */
   BlockCnt bl;
@@ -1543,20 +1647,21 @@ static void fornum (LexState *ls, TString *varname, int line) {
   /* fornum -> NAME = exp1,exp1[,exp1] forbody */
   FuncState *fs = ls->fs;
   int base = fs->freereg;
-  // 三个变量：循环子，循环条件限制，和步长
+  // 创建三个局部变量：循环子，循环条件限制，和步长
   new_localvarliteral(ls, "(for index)");
   new_localvarliteral(ls, "(for limit)");
   new_localvarliteral(ls, "(for step)");
   // 新的局部变量
   new_localvar(ls, varname);
   checknext(ls, '=');
-  // 初始化值
+  // 解析初始化表达式的值，将结果放入寄存器中，返回寄存器索引
   exp1(ls);  /* initial value */
   checknext(ls, ',');
-  // 限制值
+  // 解析限制表达式的值
   exp1(ls);  /* limit */
   // 如果有步长得到步长
   if (testnext(ls, ','))
+    // 解析步长表达式的值
     exp1(ls);  /* optional step */
   else {  /* default step = 1 */
       // 默认步长为1
@@ -1598,7 +1703,7 @@ static void forlist (LexState *ls, TString *indexname) {
   forbody(ls, base, line, nvars - 3, 0);
 }
 
-// 处理for循环的人口函数，只要程序解析到关键字for就会进入这个函数
+// 处理for循环，只要程序解析到关键字for就会进入这个函数
 static void forstat (LexState *ls, int line) {
   /* forstat -> FOR (fornum | forlist) END */
   FuncState *fs = ls->fs;
@@ -1610,7 +1715,7 @@ static void forstat (LexState *ls, int line) {
   luaX_next(ls);  /* skip 'for' */
   // 得到第一个变量名
   varname = str_checkname(ls);  /* first variable name */
-  // 
+  // 处理不同的for表达式方式
   switch (ls->t.token) {
     // for的数字型的处理
     case '=': fornum(ls, varname, line); break;
@@ -1638,29 +1743,45 @@ static void test_then_block (LexState *ls, int *escapelist) {
   expr(ls, &v);  /* read condition */
   // 确定后面是否是then，并取下一个
   checknext(ls, TK_THEN);
-  // 
+  // 如果是跳转
   if (ls->t.token == TK_GOTO || ls->t.token == TK_BREAK) {
+    // 如果表达式为true，则跳转，否则顺序执行
     luaK_goiffalse(ls->fs, &v);  /* will jump to label if condition is true */
+    // 跳转前初始化进入的代码块数据结构
     enterblock(fs, &bl, 0);  /* must enter block before 'goto' */
+    // goto语句处理
     gotostat(ls, v.t);  /* handle goto/break */
+    // 跳过后面的;
     while (testnext(ls, ';')) {}  /* skip colons */
+    // 检查当前的Token是否关闭当前的语句块
     if (block_follow(ls, 0)) {  /* 'goto' is the entire block? */
+      // 如果是关闭的token，就离开当前的代码块
       leaveblock(fs);
       return;  /* and that is it */
     }
+    // 如果条件为假，则必须跳过 'then' 部分
     else  /* must skip over 'then' part if condition is false */
+      // 创建一个跳转指令并返回它的位置
       jf = luaK_jump(fs);
   }
+  // 常规情况（不是goto或者break)
   else {  /* regular case (not goto/break) */
+    // 如果条件为false，就跳过代码块
     luaK_goiftrue(ls->fs, &v);  /* skip over block if condition is false */
+    // 初始化进入代码块
     enterblock(fs, &bl, 0);
+    // 进入false的代码块
     jf = v.f;
   }
+  // 分析语句列表
   statlist(ls);  /* 'then' part */
+  // 离开当前代码块
   leaveblock(fs);
+  // 如果是else或者elseif，跳过它
   if (ls->t.token == TK_ELSE ||
       ls->t.token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
     luaK_concat(fs, escapelist, luaK_jump(fs));  /* must jump over it */
+  // 将当前的位置加入false跳转列表中
   luaK_patchtohere(fs, jf);
 }
 
@@ -1674,10 +1795,13 @@ static void ifstat (LexState *ls, int line) {
   // elseif部分
   while (ls->t.token == TK_ELSEIF)
     test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
-  // else部分
+  // else部分 
   if (testnext(ls, TK_ELSE))
+    // else部分的代码块处理
     block(ls);  /* 'else' part */
+  // 检查结束部分
   check_match(ls, TK_END, TK_IF, line);
+  // 用当前去填充将跳转到最外面的部分
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
 
@@ -1815,16 +1939,22 @@ static void statement (LexState *ls) {
       ifstat(ls, line);
       break;
     }
+    // while语句处理
     case TK_WHILE: {  /* stat -> whilestat */
       whilestat(ls, line);
       break;
     }
+    // do end语句块
     case TK_DO: {  /* stat -> DO block END */
+      // 跳过do
       luaX_next(ls);  /* skip DO */
+      // 处理语句块
       block(ls);
+      // 结束的end
       check_match(ls, TK_END, TK_DO, line);
       break;
     }
+    // for语句处理
     case TK_FOR: {  /* stat -> forstat */
       forstat(ls, line);
       break;

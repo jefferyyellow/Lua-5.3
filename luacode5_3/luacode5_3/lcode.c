@@ -182,8 +182,11 @@ void luaK_ret (FuncState *fs, int first, int nret) {
 ** Code a "conditional jump", that is, a test or comparison opcode
 ** followed by a jump. Return jump position.
 */
+// 生成“条件跳转”代码，即测试或比较操作码后跟跳转。 返回跳跃位置。
 static int condjump (FuncState *fs, OpCode op, int A, int B, int C) {
+  // 测试比较操作字节码
   luaK_codeABC(fs, op, A, B, C);
+  // 跳转字节码
   return luaK_jump(fs);
 }
 
@@ -324,10 +327,12 @@ void luaK_patchtohere (FuncState *fs, int list) {
 // 回填跳转到‘target'的所有跳转列表的项
 // 断言意味着我们无法修复到前向地址的跳转因为我们只有在生成代码后才知道地址
 void luaK_patchlist (FuncState *fs, int list, int target) {
+  // 如果目标是当前位置，加入跳转列表
   if (target == fs->pc)  /* 'target' is current position? */
     luaK_patchtohere(fs, list);  /* add list to pending jumps */
   else {
     lua_assert(target < fs->pc);
+    // 遍历所有的列表，修复他们的目标地址和寄存器
     patchlistaux(fs, list, target, NO_REG, target);
   }
 }
@@ -338,7 +343,10 @@ void luaK_patchlist (FuncState *fs, int list, int target) {
 ** (The assertion checks that jumps either were closing nothing
 ** or were closing higher levels, from inner blocks.)
 */
+// 将“列表”中的所有跳转路径的close upvalues限制最大为指定的level
+//（断言检查跳转要么没有关闭任何内容，要么关闭更高级别，来自内部块。）
 void luaK_patchclose (FuncState *fs, int list, int level) {
+  // 参数+1的目的是保留0表示无操作
   level++;  /* argument is +1 to reserve 0 as non-op */
   for (; list != NO_JUMP; list = getjump(fs, list)) {
     lua_assert(GET_OPCODE(fs->f->code[list]) == OP_JMP &&
@@ -431,6 +439,7 @@ int luaK_codek (FuncState *fs, int reg, int k) {
 ** Check register-stack level, keeping track of its maximum size
 ** in field 'maxstacksize'
 */
+// 检查寄存器堆栈层级，在“maxstacksize”字段中跟踪其最大大小
 void luaK_checkstack (FuncState *fs, int n) {
   int newstack = fs->freereg + n;
   if (newstack > fs->f->maxstacksize) {
@@ -458,6 +467,7 @@ void luaK_reserveregs (FuncState *fs, int n) {
 ** a local variable.
 )
 */
+// 如果它既不是一个常量索引也不是一个局部变量索引，就释放寄存器reg
 static void freereg (FuncState *fs, int reg) {
     // 不是常量并且不是活动的寄存器了
   if (!ISK(reg) && reg >= fs->nactvar) {
@@ -470,7 +480,7 @@ static void freereg (FuncState *fs, int reg) {
 /*
 ** Free register used by expression 'e' (if any)
 */
-// 释放用过的寄存器
+// 释放表达式e用过的寄存器
 static void freeexp (FuncState *fs, expdesc *e) {
     // 表示分配的寄存器，可以动态释放的
   if (e->k == VNONRELOC)
@@ -482,9 +492,11 @@ static void freeexp (FuncState *fs, expdesc *e) {
 ** Free registers used by expressions 'e1' and 'e2' (if any) in proper
 ** order.
 */
+// 以合适的顺序释放表达式e1和e2使用过的寄存器
 static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
   int r1 = (e1->k == VNONRELOC) ? e1->u.info : -1;
   int r2 = (e2->k == VNONRELOC) ? e2->u.info : -1;
+  // 从大到小的方式释放
   if (r1 > r2) {
     freereg(fs, r1);
     freereg(fs, r2);
@@ -612,14 +624,20 @@ static int nilK (FuncState *fs) {
 ** Either 'e' is a multi-ret expression (function call or vararg)
 ** or 'nresults' is LUA_MULTRET (as any expression can satisfy that).
 */
+// 修复一个表达式以返回nresults的结果。
+// e是一个多返回值的表达式（函数调用或vararg）或者nresult是LUA_MULTRET（因为任何表达式都可以满足）。
 void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
   if (e->k == VCALL) {  /* expression is an open function call? */
+    // 函数调用
     SETARG_C(getinstruction(fs, e), nresults + 1);
   }
+  // 不定参数
   else if (e->k == VVARARG) {
+    // 得到指令
     Instruction *pc = &getinstruction(fs, e);
     SETARG_B(*pc, nresults + 1);
     SETARG_A(*pc, fs->freereg);
+    // 预订寄存器
     luaK_reserveregs(fs, 1);
   }
   else lua_assert(nresults == LUA_MULTRET);
@@ -776,9 +794,11 @@ static void discharge2anyreg (FuncState *fs, expdesc *e) {
   }
 }
 
-
+// 加载bool并且根据其跳转和处理
 static int code_loadbool (FuncState *fs, int A, int b, int jump) {
+  //  返回当前的'pc'并将其标记为跳转目标
   luaK_getlabel(fs);  /* those instructions may be jump targets */
+  // 加载bool并且根据其跳转和处理
   return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
 }
 
@@ -791,6 +811,7 @@ static int code_loadbool (FuncState *fs, int A, int b, int jump) {
 static int need_value (FuncState *fs, int list) {
   for (; list != NO_JUMP; list = getjump(fs, list)) {
     Instruction i = *getjumpcontrol(fs, list);
+    // 不是OP_TESTSET是需要值的
     if (GET_OPCODE(i) != OP_TESTSET) return 1;
   }
   return 0;  /* not found */
@@ -809,19 +830,26 @@ static int need_value (FuncState *fs, int list) {
 static void exp2reg (FuncState *fs, expdesc *e, int reg) {
   // 确保表达式的值在reg寄存器中
   discharge2reg(fs, e, reg);
+  // 跳转表达式
   if (e->k == VJMP)  /* expression itself is a test? */
+    // 加入跳转表e-t中
     luaK_concat(fs, &e->t, e->u.info);  /* put this jump in 't' list */
+  // 需要跳转
   if (hasjumps(e)) {
     int final;  /* position after whole expression */
     int p_f = NO_JUMP;  /* position of an eventual LOAD false */
     int p_t = NO_JUMP;  /* position of an eventual LOAD true */
+    // 如果跳转的true列表或者false列表需要值 
     if (need_value(fs, e->t) || need_value(fs, e->f)) {
       int fj = (e->k == VJMP) ? NO_JUMP : luaK_jump(fs);
+      // 加载bool并且根据其跳转和处理 
       p_f = code_loadbool(fs, reg, 0, 1);
       p_t = code_loadbool(fs, reg, 1, 0);
+      // 将fj中的元素添加到fs->jpc的挂起跳转列表(当前位置)
       luaK_patchtohere(fs, fj);
     }
     final = luaK_getlabel(fs);
+    // 遍历所有的true和false的跳转表，修复他们的目标地址和寄存器：
     patchlistaux(fs, e->f, final, reg, p_f);
     patchlistaux(fs, e->t, final, reg, p_t);
   }
@@ -883,8 +911,10 @@ int luaK_exp2anyreg (FuncState *fs, expdesc *e) {
 ** Ensures final expression result is either in a register or in an
 ** upvalue.
 */
+// 确保表达式的结果要么在寄存器上，要么在一个upvalue上
 void luaK_exp2anyregup (FuncState *fs, expdesc *e) {
   if (e->k != VUPVAL || hasjumps(e))
+    // 确保最终表达式结果加载到寄存器
     luaK_exp2anyreg(fs, e);
 }
 
@@ -917,20 +947,24 @@ int luaK_exp2RK (FuncState *fs, expdesc *e) {
   // 确保最终表达式结果在寄存器中或者是常量
   luaK_exp2val(fs, e);
   switch (e->k) {  /* move constants to 'k' */
+    // 得到常量列表中的索引
     case VTRUE: e->u.info = boolK(fs, 1); goto vk;
     case VFALSE: e->u.info = boolK(fs, 0); goto vk;
     case VNIL: e->u.info = nilK(fs); goto vk;
     case VKINT: e->u.info = luaK_intK(fs, e->u.ival); goto vk;
     case VKFLT: e->u.info = luaK_numberK(fs, e->u.nval); goto vk;
     case VK:
-     vk:
+    vk:
+      // 表达式的类型该成常量表达式
       e->k = VK;
       if (e->u.info <= MAXINDEXRK)  /* constant fits in 'argC'? */
+        // 将常量索引编码为RK值 
         return RKASK(e->u.info);
       else break;
     default: break;
   }
   /* not a constant in the right range: put it in a register */
+  // 不是常量，就放在寄存器中
   return luaK_exp2anyreg(fs, e);
 }
 
@@ -998,17 +1032,25 @@ static void negatecondition (FuncState *fs, expdesc *e) {
 ** Optimize when 'e' is 'not' something, inverting the condition
 ** and removing the 'not'.
 */
+// 如果e为条件，则生成跳转指令（即，如果cond为true，如果“e”为真，代码将跳转。）返回跳转位置。
+// 当“e”为某个值取反，反转条件并删除取反的条件。
 static int jumponcond (FuncState *fs, expdesc *e, int cond) {
   if (e->k == VRELOCABLE) {
     Instruction ie = getinstruction(fs, e);
+    // 如果e为取反
     if (GET_OPCODE(ie) == OP_NOT) {
+      // 优化掉（删除）取反的指令
       fs->pc--;  /* remove previous OP_NOT */
+      // 生成取反的条件跳转指令
       return condjump(fs, OP_TEST, GETARG_B(ie), 0, !cond);
     }
     /* else go through */
   }
+  // 保证表达式的值都在寄存器上 
   discharge2anyreg(fs, e);
+  // 释放没用的寄存器
   freeexp(fs, e);
+  // 生成条件跳转字节码
   return condjump(fs, OP_TESTSET, NO_REG, e->u.info, cond);
 }
 
@@ -1016,10 +1058,10 @@ static int jumponcond (FuncState *fs, expdesc *e, int cond) {
 /*
 ** Emit code to go through if 'e' is true, jump otherwise.
 */
-// 
+// 如果e为true就继续，否则跳转 
 void luaK_goiftrue (FuncState *fs, expdesc *e) {
   int pc;  /* pc of new jump */
-  // 调用函数将传人的表达式解析出来。
+  // 调用函数将传入的表达式解析出来。
   luaK_dischargevars(fs, e);
   // 当表达式是常量（ VK ）、VKNUM （数字）以及VTRUE （布尔类型的true)时，
   // 并不需要增加一个跳转指令跳过下一条指令。
@@ -1032,6 +1074,7 @@ void luaK_goiftrue (FuncState *fs, expdesc *e) {
       pc = e->u.info;  /* save jump position */
       break;
     }
+    // 如果为ture，就不跳转
     case VK: case VKFLT: case VKINT: case VTRUE: {
       pc = NO_JUMP;  /* always true; do nothing */
       break;
@@ -1064,22 +1107,28 @@ void luaK_goiftrue (FuncState *fs, expdesc *e) {
 // 如果“e”为假，则执行执行该代码，否则跳转。
 void luaK_goiffalse (FuncState *fs, expdesc *e) {
   int pc;  /* pc of new jump */
+  // 调用函数将传入的表达式解析出来。
   luaK_dischargevars(fs, e);
   switch (e->k) {
     case VJMP: {
+      // 如果为true，直接跳转
       pc = e->u.info;  /* already jump if true */
       break;
     }
+    // nil和false表示失败，不跳转，继续执行
     case VNIL: case VFALSE: {
       pc = NO_JUMP;  /* always false; do nothing */
       break;
     }
     default: {
+      // 如果e的表达式的结果为true，生成条件跳转的指令
       pc = jumponcond(fs, e, 1);  /* jump if true */
       break;
     }
   }
+  // 将新的跳转加入的true跳转表中
   luaK_concat(fs, &e->t, pc);  /* insert new jump in 't' list */
+  // false跳转表就是直接当前指令
   luaK_patchtohere(fs, e->f);  /* false list jumps to here (to go through) */
   e->f = NO_JUMP;
 }
@@ -1134,11 +1183,15 @@ static void codenot (FuncState *fs, expdesc *e) {
 ** Create expression 't[k]'. 't' must have its final result already in a
 ** register or upvalue.
 */
+// 创建一个表达式t[k]，t必须已经取到了最终的值并且要么在寄存器，要么在upvalue上。
 void luaK_indexed (FuncState *fs, expdesc *t, expdesc *k) {
   lua_assert(!hasjumps(t) && (vkisinreg(t->k) || t->k == VUPVAL));
+  // table的寄存器索引或者upvalue索引
   t->u.ind.t = t->u.info;  /* register or upvalue index */
+  // 键的寄存器索引或者常量表达式列表中的索引
   t->u.ind.idx = luaK_exp2RK(fs, k);  /* R/K index for key */
   t->u.ind.vt = (t->k == VUPVAL) ? VUPVAL : VLOCAL;
+  // 标记为索引变量
   t->k = VINDEXED;
 }
 
@@ -1232,13 +1285,21 @@ static void codeunexpval (FuncState *fs, OpCode op, expdesc *e, int line) {
 ** in "stack order" (that is, first on 'e2', which may have more
 ** recent registers to be released).
 */
+// 为二元操作符产生值的代码（除逻辑运算符 and、or 和比较运算符之外的所有内容）。 
+// 产生最终结果的表达式将被编码为'e1'。 因为'luaK_exp2RK'可以释放寄存器，
+// 所以它的调用必须是“堆栈顺序”（也就是说，首先在'e2'上，它可能有更近的寄存器要释放）。
 static void codebinexpval (FuncState *fs, OpCode op,
                            expdesc *e1, expdesc *e2, int line) {
+  // 确保最终表达式结果在有效的R/K索引中
   int rk2 = luaK_exp2RK(fs, e2);  /* both operands are "RK" */
   int rk1 = luaK_exp2RK(fs, e1);
+  // 释放寄存器
   freeexps(fs, e1, e2);
+  // 根据操作符合操作数，生成代码
   e1->u.info = luaK_codeABC(fs, op, 0, rk1, rk2);  /* generate opcode */
+  // 表达式的结果在寄存器上
   e1->k = VRELOCABLE;  /* all those operations are relocatable */
+  // 修正当前位置关联的行号信息
   luaK_fixline(fs, line);
 }
 
@@ -1247,23 +1308,30 @@ static void codebinexpval (FuncState *fs, OpCode op,
 ** Emit code for comparisons.
 ** 'e1' was already put in R/K form by 'luaK_infix'.
 */
+// 生成比较代码,e1已经通过luak_infi放入寄存器或者常量列表
 static void codecomp (FuncState *fs, BinOpr opr, expdesc *e1, expdesc *e2) {
+  // 得到比较的左右两个值
   int rk1 = (e1->k == VK) ? RKASK(e1->u.info)
                           : check_exp(e1->k == VNONRELOC, e1->u.info);
   int rk2 = luaK_exp2RK(fs, e2);
+  // 释放寄存器
   freeexps(fs, e1, e2);
+  // 根据不同的比较操作符处理
   switch (opr) {
     case OPR_NE: {  /* '(a ~= b)' ==> 'not (a == b)' */
+      // 将不等于换成等于取反，生成“条件跳转”代码,
       e1->u.info = condjump(fs, OP_EQ, 0, rk1, rk2);
       break;
     }
     case OPR_GT: case OPR_GE: {
       /* '(a > b)' ==> '(b < a)';  '(a >= b)' ==> '(b <= a)' */
+      // 将大于和大于等于分别换成小于、小于等于，生成条件跳转代码
       OpCode op = cast(OpCode, (opr - OPR_NE) + OP_EQ);
       e1->u.info = condjump(fs, op, 1, rk2, rk1);  /* invert operands */
       break;
     }
     default: {  /* '==', '<', '<=' use their own opcodes */
+      // 生成条件跳转代码
       OpCode op = cast(OpCode, (opr - OPR_EQ) + OP_EQ);
       e1->u.info = condjump(fs, op, 1, rk1, rk2);
       break;
@@ -1303,31 +1371,42 @@ void luaK_prefix (FuncState *fs, UnOpr op, expdesc *e, int line) {
 ** Process 1st operand 'v' of binary operation 'op' before reading
 ** 2nd operand.
 */
+// 在读取第二个操作数之前处理二元运算“op”的第一个操作数“v”。
 void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
   switch (op) {
+    // and
     case OPR_AND: {
+      // 如果为true，继续，false，就跳转
       luaK_goiftrue(fs, v);  /* go ahead only if 'v' is true */
       break;
     }
+    // or
     case OPR_OR: {
+      // 如果为false，继续，ture，跳转
       luaK_goiffalse(fs, v);  /* go ahead only if 'v' is false */
       break;
     }
+    // 连接符(...)
     case OPR_CONCAT: {
+      // 解析表达式,操作数必须在“堆栈”上
       luaK_exp2nextreg(fs, v);  /* operand must be on the 'stack' */
       break;
     }
+    // 二元数值运算符
     case OPR_ADD: case OPR_SUB:
     case OPR_MUL: case OPR_DIV: case OPR_IDIV:
     case OPR_MOD: case OPR_POW:
     case OPR_BAND: case OPR_BOR: case OPR_BXOR:
     case OPR_SHL: case OPR_SHR: {
+      // 将表达式转换为数值
       if (!tonumeral(v, NULL))
+        // 确保最终表达式结果在有效的R(寄存器)/K（常量）索引中
         luaK_exp2RK(fs, v);
       /* else keep numeral, which may be folded with 2nd operand */
       break;
     }
     default: {
+      // 确保最终表达式结果在有效的R(寄存器)/K（常量）索引中
       luaK_exp2RK(fs, v);
       break;
     }
@@ -1341,34 +1420,48 @@ void luaK_infix (FuncState *fs, BinOpr op, expdesc *v) {
 ** concatenation is right associative), merge second CONCAT into first
 ** one.
 */
+// 读取第二个操作数后，完成二元操作符的代码。 对于“(a .. b .. c)”
+// （即“(a .. (b .. c))”，因为串联是右结合），将第二个 CONCAT 合并到第一个。
 void luaK_posfix (FuncState *fs, BinOpr op,
                   expdesc *e1, expdesc *e2, int line) {
   switch (op) {
     case OPR_AND: {
       lua_assert(e1->t == NO_JUMP);  /* list closed by 'luK_infix' */
+      // 解析表达式
       luaK_dischargevars(fs, e2);
+      // 连接判断失败跳转列表
       luaK_concat(fs, &e2->f, e1->f);
       *e1 = *e2;
       break;
     }
     case OPR_OR: {
       lua_assert(e1->f == NO_JUMP);  /* list closed by 'luK_infix' */
+      // 解析表达式
       luaK_dischargevars(fs, e2);
+      // 连接判断成功跳转列表
       luaK_concat(fs, &e2->t, e1->t);
       *e1 = *e2;
       break;
     }
     case OPR_CONCAT: {
+      //  确保最终表达式结果在寄存器中或者是常量
       luaK_exp2val(fs, e2);
+      // 寄存器上
       if (e2->k == VRELOCABLE &&
           GET_OPCODE(getinstruction(fs, e2)) == OP_CONCAT) {
         lua_assert(e1->u.info == GETARG_B(getinstruction(fs, e2))-1);
+        // 释放e1的寄存器
         freeexp(fs, e1);
+        // e2指令的B的值为e1的指令索引
         SETARG_B(getinstruction(fs, e2), e1->u.info);
-        e1->k = VRELOCABLE; e1->u.info = e2->u.info;
+        e1->k = VRELOCABLE; 
+        // e2的指令索引赋值给e1的指令索引
+        e1->u.info = e2->u.info;
       }
       else {
+        // 确保表达式的结果（包括从它的跳转表的结果）保存在下一个可用的寄存器中
         luaK_exp2nextreg(fs, e2);  /* operand must be on the 'stack' */
+       //  为二元操作符产生值的代码（
         codebinexpval(fs, OP_CONCAT, e1, e2, line);
       }
       break;
@@ -1377,10 +1470,12 @@ void luaK_posfix (FuncState *fs, BinOpr op,
     case OPR_IDIV: case OPR_MOD: case OPR_POW:
     case OPR_BAND: case OPR_BOR: case OPR_BXOR:
     case OPR_SHL: case OPR_SHR: {
+      // 先尝试进行常量折叠操作，不行的话，再产生二元操作符处理代码
       if (!constfolding(fs, op + LUA_OPADD, e1, e2))
         codebinexpval(fs, cast(OpCode, op + OP_ADD), e1, e2, line);
       break;
     }
+    // 比较操作
     case OPR_EQ: case OPR_LT: case OPR_LE:
     case OPR_NE: case OPR_GT: case OPR_GE: {
       codecomp(fs, op, e1, e2);
