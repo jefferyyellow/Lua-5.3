@@ -361,13 +361,17 @@ static void singlevar (LexState *ls, expdesc *var) {
 
 // 用于根据等号两边变量和表达式的数量来调整赋值。具体来说，
 // 在上面这个例子中，当变量数量多于等号右边的表达式数量时，会将多余的变量置为NIL
+// nvars：变量的数目
+// nexps：表达式返回的值的数目
 static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
   FuncState *fs = ls->fs;
+
   int extra = nvars - nexps;
   // 多个返回值
   if (hasmultret(e->k)) {
     extra++;  /* includes call itself */
     if (extra < 0) extra = 0;
+    // 设置返回值
     luaK_setreturns(fs, e, extra);  /* last exp. provides the difference */
     if (extra > 1) luaK_reserveregs(fs, extra-1);
   }
@@ -375,10 +379,13 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
     if (e->k != VVOID) luaK_exp2nextreg(fs, e);  /* close last expression */
     if (extra > 0) {
       int reg = fs->freereg;
+      // 预留extra个寄存器
       luaK_reserveregs(fs, extra);
+      // 将不足的设置为nil
       luaK_nil(fs, reg, extra);
     }
   }
+  // 将多余的返回值从寄存器中移除
   if (nexps > nvars)
     ls->fs->freereg -= nexps - nvars;  /* remove extra values */
 }
@@ -1581,23 +1588,35 @@ static void whilestat (LexState *ls, int line) {
   luaK_patchtohere(fs, condexit);  /* false conditions finish the loop */
 }
 
-
+// repeat语句处理
 static void repeatstat (LexState *ls, int line) {
   /* repeatstat -> REPEAT block UNTIL cond */
   int condexit;
   FuncState *fs = ls->fs;
+  // 循环起始处
   int repeat_init = luaK_getlabel(fs);
   BlockCnt bl1, bl2;
+  // 进入循环代码块
   enterblock(fs, &bl1, 1);  /* loop block */
+  // 进入范围块
   enterblock(fs, &bl2, 0);  /* scope block */
+  // 跳过repeat语句
   luaX_next(ls);  /* skip REPEAT */
+  // 处理语句列表
   statlist(ls);
+  // 检查repeate对应的until
   check_match(ls, TK_UNTIL, TK_REPEAT, line);
+  // 读取条件并解析条件表达式
   condexit = cond(ls);  /* read condition (inside scope block) */
+  // 循环体里涉及到upvalues
   if (bl2.upval)  /* upvalues? */
+    // 关闭upvalues
     luaK_patchclose(fs, condexit, bl2.nactvar);
+  // 离开范围代码块
   leaveblock(fs);  /* finish scope */
+  // 将循环开始地址回填条件跳转
   luaK_patchlist(fs, condexit, repeat_init);  /* close the loop */
+  // 离开循环代码块
   leaveblock(fs);  /* finish loop */
 }
 
@@ -1622,12 +1641,19 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   adjustlocalvars(ls, 3);  /* control variables */
   // 找到 do 保留字
   checknext(ls, TK_DO);
+  // 根据是数值控制循环还是泛型循环生成不同的指令
   prep = isnum ? luaK_codeAsBx(fs, OP_FORPREP, base, NO_JUMP) : luaK_jump(fs);
+  // 进入声明变量的作用域代码块
   enterblock(fs, &bl, 0);  /* scope for declared variables */
+  // 调整局部变量的数量
   adjustlocalvars(ls, nvars);
+  // 将其放置在寄存器上
   luaK_reserveregs(fs, nvars);
+  // 处理循环体代码块
   block(ls);
+  // 离开作用域代码块
   leaveblock(fs);  /* end of scope for declared variables */
+  // 回填跳转到当前的跳转列表
   luaK_patchtohere(fs, prep);
   // 数字的for
   if (isnum)  /* numeric for? */
@@ -1635,10 +1661,13 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum) {
   else {  /* generic for */
       // 泛型for
     luaK_codeABC(fs, OP_TFORCALL, base, 0, nvars);
+    // 修正当前位置关联的行号信息
     luaK_fixline(fs, line);
     endfor = luaK_codeAsBx(fs, OP_TFORLOOP, base + 2, NO_JUMP);
   }
+  // 回填循环结束的跳转
   luaK_patchlist(fs, endfor, prep + 1);
+  // 修正当前位置关联的行号信息
   luaK_fixline(fs, line);
 }
 
@@ -1687,6 +1716,7 @@ static void forlist (LexState *ls, TString *indexname) {
   new_localvarliteral(ls, "(for state)");
   new_localvarliteral(ls, "(for control)");
   /* create declared variables */
+  // 创建声明的变量
   new_localvar(ls, indexname);
   // 解析列表
   while (testnext(ls, ',')) {
@@ -1696,6 +1726,7 @@ static void forlist (LexState *ls, TString *indexname) {
   // 找到in
   checknext(ls, TK_IN);
   line = ls->linenumber;
+  // 用于根据等号两边变量和表达式的数量来调整赋值
   adjust_assign(ls, 3, explist(ls, &e), &e);
   // 用来调用发生器的额外的空间
   luaK_checkstack(fs, 3);  /* extra space to call generator */
@@ -1805,14 +1836,18 @@ static void ifstat (LexState *ls, int line) {
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
 
-
+// 局部函数
 static void localfunc (LexState *ls) {
   expdesc b;
   FuncState *fs = ls->fs;
+  // 新的局部变量
   new_localvar(ls, str_checkname(ls));  /* new local variable */
+  // 进入其范围
   adjustlocalvars(ls, 1);  /* enter its scope */
+  // 解析函数体，将其放入下一个寄存器中
   body(ls, &b, 0, ls->linenumber);  /* function created in next register */
   /* debug information will only see the variable after this point! */
+  // 设置局部变量开始的指令地址，调试信息将仅在该点之后看到变量
   getlocvar(fs, b.u.info)->startpc = fs->pc;
 }
 
@@ -1823,10 +1858,13 @@ static void localstat (LexState *ls) {
   int nexps;
   expdesc e;
   do {
+    // 取得变量名，新建一个局部变量
     new_localvar(ls, str_checkname(ls));
     nvars++;
   } while (testnext(ls, ','));
+  // 后面是否有初始化语句
   if (testnext(ls, '='))
+.   // 解析初始化语句
     nexps = explist(ls, &e);
   else {
     e.k = VVOID;
@@ -1959,22 +1997,28 @@ static void statement (LexState *ls) {
       forstat(ls, line);
       break;
     }
+    // repeat语句处理
     case TK_REPEAT: {  /* stat -> repeatstat */
       repeatstat(ls, line);
       break;
     }
+    // 处理函数定义
     case TK_FUNCTION: {  /* stat -> funcstat */
       funcstat(ls, line);
       break;
     }
+    // 局部变量或者局部函数
     case TK_LOCAL: {  /* stat -> localstat */
       luaX_next(ls);  /* skip LOCAL */
+      // 局部函数
       if (testnext(ls, TK_FUNCTION))  /* local function? */
         localfunc(ls);
+      // 局部变量
       else
         localstat(ls);
       break;
     }
+    // 
     case TK_DBCOLON: {  /* stat -> label */
       luaX_next(ls);  /* skip double colon */
       labelstat(ls, str_checkname(ls), line);
