@@ -38,6 +38,7 @@ LUAI_DDEF const TValue luaO_nilobject_ = {NILCONSTANT};
 ** (eeeeexxx), where the real value is (1xxx) * 2^(eeeee - 1) if
 ** eeeee != 0 and (xxx) otherwise.
 */
+// 转换一个整数到类似浮点数方式，以eeeeexxx表示，如果eeee不为0，且xxx存在，真实的值为 (1xxx) * 2^(eeeee - 1)
 int luaO_int2fb (unsigned int x) {
   int e = 0;  /* exponent */
   if (x < 8) return x;

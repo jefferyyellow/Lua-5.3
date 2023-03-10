@@ -891,86 +891,136 @@ void luaV_execute (lua_State *L) {
     vmfetch();
     // 根据不同的指令集，不同的处理
     vmdispatch (GET_OPCODE(i)) {
+      // R(A) := R(B)	
       vmcase(OP_MOVE) {
+        // 取得base+rb的值，赋值给ra
         setobjs2s(L, ra, RB(i));
         vmbreak;
       }
+      // R(A) := Kst(Bx)
       vmcase(OP_LOADK) {
+        // 从指令中得到bx的值，加上常量表的地址
         TValue *rb = k + GETARG_Bx(i);
         setobj2s(L, ra, rb);
         vmbreak;
       }
+      // LOADKX是lua5.2新加入的指令。当需要生成LOADK指令时，如果需要索引的常量id超出了Bx所能表示的有效范围，
+      // 那么就生成一个LOADKX指令，取代LOADK指令，并且接下来立即生成一个EXTRAARG指令，并用其
+      // R(A) := Kst(extra arg)
       vmcase(OP_LOADKX) {
         TValue *rb;
         lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
+        // 得到Ax的值，加上常量表基地址
         rb = k + GETARG_Ax(*ci->u.l.savedpc++);
         setobj2s(L, ra, rb);
         vmbreak;
       }
+      // LOADBOOL将B所表示的boolean值装载到寄存器A中。B使用0和1分别代表false和true
+      // R(A) := (Bool)B; if (C) pc++
       vmcase(OP_LOADBOOL) {
         setbvalue(ra, GETARG_B(i));
+        // 如果C值不为0，那么PC寄存器自增1(跳过下一条指令)
         if (GETARG_C(i)) ci->u.l.savedpc++;  /* skip next instruction (if C) */
         vmbreak;
       }
+      // OP_LOADNIL是可以同时对一段连续的寄存器都赋予nil值,所以，如果是对于连续的寄存器
+      // 的赋值nil，lua编译器会合并到一个指令，而不连续的就不能合并，我们在编写的时候可
+      // 以注意这个细节
+      // R(A), R(A+1), ..., R(A+B) := nil
       vmcase(OP_LOADNIL) {
+        // 从[a,a+b]这个区间的都设置为nil，前闭后闭区间
         int b = GETARG_B(i);
         do {
           setnilvalue(ra++);
         } while (b--);
         vmbreak;
       }
+      // OP_GETUPVAL的B参数为Upvalue的索引，获取B参数对应的的Upvalue值，
+      // 然后设置到A寄存器上。
+      // R(A) := UpValue[B]	
       vmcase(OP_GETUPVAL) {
         int b = GETARG_B(i);
         setobj2s(L, ra, cl->upvals[b]->v);
         vmbreak;
       }
-      vmcase(OP_GETTABUP) {
+      // 从Upvalue列表中，获取指令B参数对应的Upvalue，
+      // 并用指令C参数作为Key从Upvalue里面获取对应的值赋值给A寄存器。
+      // R(A) := UpValue[B][RK(C)]
+       vmcase(OP_GETTABUP) {
+        // 从upvals数组中取得表
         TValue *upval = cl->upvals[GETARG_B(i)]->v;
+        // 将指令C参数作为Key
         TValue *rc = RKC(i);
         gettableProtected(L, upval, rc, ra);
         vmbreak;
       }
+      // R(A) := R(B)[RK(C)]		
       vmcase(OP_GETTABLE) {
+        // 取指令B参数对应的寄存器的值为table
         StkId rb = RB(i);
+        // C参数为key
         TValue *rc = RKC(i);
         gettableProtected(L, rb, rc, ra);
         vmbreak;
       }
+      // UpValue[A][RK(B)] := RK(C)
       vmcase(OP_SETTABUP) {
+        // 指令A参数为索引，得到upvals对应索引的值为table
         TValue *upval = cl->upvals[GETARG_A(i)]->v;
+        // 从b参数得到key
         TValue *rb = RKB(i);
+        // 从c参数得到值
         TValue *rc = RKC(i);
+        // 对tab的key赋值
         settableProtected(L, upval, rb, rc);
         vmbreak;
       }
+      // OP_GETUPVAL的B参数为Upvalue的索引，将A寄存器中的值设置B参数对应索引的的Upvalue值，
+      // UpValue[B] := R(A)	
       vmcase(OP_SETUPVAL) {
         UpVal *uv = cl->upvals[GETARG_B(i)];
         setobj(L, uv->v, ra);
         luaC_upvalbarrier(L, uv);
         vmbreak;
       }
+      // 寄存器A里面的table，通过B参数取得key,通过C参数取得value
+      // R(A)[RK(B)] := RK(C)
       vmcase(OP_SETTABLE) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         settableProtected(L, ra, rb, rc);
         vmbreak;
       }
+      // 创建一个表
+      // R(A) := {} (size = B,C)		
       vmcase(OP_NEWTABLE) {
+        // 参数b对应的寄存器里面保存了数组部分长度的一个转换数
         int b = GETARG_B(i);
+        // 参数c对应的寄存器里面保存了hash部分长度的一个转换数
         int c = GETARG_C(i);
+        // 创建一个table
         Table *t = luaH_new(L);
         sethvalue(L, ra, t);
+        // 重新设置大小
         if (b != 0 || c != 0)
           luaH_resize(L, t, luaO_fb2int(b), luaO_fb2int(c));
         checkGC(L, ra + 1);
         vmbreak;
       }
+      // R(A + 1) := R(B); R(A) := R(B)[RK(C)]
+	  // 对于使用表的面向对象编程。 从表元素中检索函数引用并将其放入寄存器 R(A)，
+      // 然后将对表本身的引用放入下一个寄存器 R(A+1)。 这条指令在设置方法调用时省去了一些繁琐的操作。
+      // R(B) 是保存对带有方法的表的引用的寄存器。 方法函数本身是使用表索引 RK(C) 找到的，
+      // 它可以是寄存器 R(C) 的值或常数。
       vmcase(OP_SELF) {
         const TValue *aux;
         StkId rb = RB(i);
         TValue *rc = RKC(i);
+        // 转换成string
         TString *key = tsvalue(rc);  /* key must be a string */
+        // 参数B取出的寄存器的值赋值给参数A后面的寄存器
         setobjs2s(L, ra + 1, rb);
+        //  参数B取出的寄存器是table,参数C取出来的当key,取出来的值设置到A指向的寄存器
         if (luaV_fastget(L, rb, key, aux, luaH_getstr)) {
           setobj2s(L, ra, aux);
         }

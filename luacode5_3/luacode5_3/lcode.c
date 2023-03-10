@@ -654,13 +654,17 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
 ** (Calls are created returning one result, so that does not need
 ** to be fixed.)
 */
+// 修正一个表达式来返回一个值
 void luaK_setoneret (FuncState *fs, expdesc *e) {
+    // 函数调用
   if (e->k == VCALL) {  /* expression is an open function call? */
     /* already returns 1 value */
     lua_assert(GETARG_C(getinstruction(fs, e)) == 2);
+    // 结构有固定的位置
     e->k = VNONRELOC;  /* result has fixed position */
     e->u.info = GETARG_A(getinstruction(fs, e));
   }
+  // 可变参数
   else if (e->k == VVARARG) {
     SETARG_B(getinstruction(fs, e), 2);
     e->k = VRELOCABLE;  /* can relocate its simple result */
@@ -972,10 +976,12 @@ int luaK_exp2RK (FuncState *fs, expdesc *e) {
 /*
 ** Generate code to store result of expression 'ex' into variable 'var'.
 */
+// 生成代码将表达式ex的结果存入变量var
 void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
   switch (var->k) {
     case VLOCAL: {
       freeexp(fs, ex);
+      // 确保最终表达式结果在寄存器中
       exp2reg(fs, ex, var->u.info);  /* compute 'ex' into proper place */
       return;
     }
@@ -986,12 +992,14 @@ void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
     }
     case VINDEXED: {
       OpCode op = (var->u.ind.vt == VLOCAL) ? OP_SETTABLE : OP_SETTABUP;
+      // 得到常量或者寄存器索引，写入指令中
       int e = luaK_exp2RK(fs, ex);
       luaK_codeABC(fs, op, var->u.ind.t, var->u.ind.idx, e);
       break;
     }
     default: lua_assert(0);  /* invalid var kind to store */
   }
+  // 是否表达式使用过的寄存器
   freeexp(fs, ex);
 }
 
@@ -999,6 +1007,7 @@ void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
 /*
 ** Emit SELF instruction (convert expression 'e' into 'e:key(e,').
 */
+// 生成取self的指令（将表达式e转化成e:key(e）)
 void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
   int ereg;
   luaK_exp2anyreg(fs, e);
@@ -1006,7 +1015,9 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
   freeexp(fs, e);
   e->u.info = fs->freereg;  /* base register for op_self */
   e->k = VNONRELOC;  /* self expression has a fixed register */
+  // 为self和op_self预留寄存器
   luaK_reserveregs(fs, 2);  /* function and 'self' produced by op_self */
+  // 写入字节码
   luaK_codeABC(fs, OP_SELF, e->u.info, ereg, luaK_exp2RK(fs, key));
   freeexp(fs, key);
 }

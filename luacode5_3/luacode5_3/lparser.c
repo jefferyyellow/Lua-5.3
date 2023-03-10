@@ -697,7 +697,7 @@ static void close_func (LexState *ls) {
 ** 'until' closes syntactical blocks, but do not close scope,
 ** so it is handled in separate.
 */
-// 检查当前令牌是否在块的后续集中。 'until'关闭句法块，但不关闭作用域，因此单独处理。
+// 检查当前令牌是否在块的后续代码块中。 'until'关闭句法块，但不关闭作用域，因此单独处理。
 static int block_follow (LexState *ls, int withuntil) {
   switch (ls->t.token) {
     case TK_ELSE: case TK_ELSEIF:
@@ -1418,8 +1418,11 @@ static void block (LexState *ls) {
 ** structure to chain all variables in the left-hand side of an
 ** assignment
 */
+// 将赋值左侧的所有变量链接起来的结构
 struct LHS_assign {
+  // 链表结构
   struct LHS_assign *prev;
+  // 变量表达式，全局，局部，upvalue或者数组索引
   expdesc v;  /* variable (global, local, upvalue, or indexed) */
 };
 
@@ -1430,25 +1433,32 @@ struct LHS_assign {
 ** table. If so, save original upvalue/local value in a safe place and
 ** use this safe copy in the previous assignment.
 */
+// 检查在对upvalue/局部变量的赋值中，upvalue/局部变量是否在先前对表的赋值中开始使用。
+// 如果是这样，请将原始upvalue/局部变量的值保存在安全的地方，并在之前的分配中使用此安全副本。
 static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   FuncState *fs = ls->fs;
   int extra = fs->freereg;  /* eventual position to save local variable */
   int conflict = 0;
+  // 遍历以前的赋值
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
+    // 对表的赋值
     if (lh->v.k == VINDEXED) {  /* assigning to a table? */
       /* table is the upvalue/local being assigned now? */
+      // 表是现在分配的upvalue/局部变量
       if (lh->v.u.ind.vt == v->k && lh->v.u.ind.t == v->u.info) {
         conflict = 1;
         lh->v.u.ind.vt = VLOCAL;
         lh->v.u.ind.t = extra;  /* previous assignment will use safe copy */
       }
       /* index is the local being assigned? (index cannot be upvalue) */
+      // 索引是本地分配的吗，（索引不能是upvalue)
       if (v->k == VLOCAL && lh->v.u.ind.idx == v->u.info) {
         conflict = 1;
         lh->v.u.ind.idx = extra;  /* previous assignment will use safe copy */
       }
     }
   }
+  // 如果冲突，将upvalue/局部变量拷贝到一个临时的地方（就是位置extra）
   if (conflict) {
     /* copy upvalue/local value to a temporary (in position 'extra') */
     OpCode op = (v->k == VLOCAL) ? OP_MOVE : OP_GETUPVAL;
@@ -1457,33 +1467,47 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   }
 }
 
-
+// 处理赋值表达式
 static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
+  // 第一个变量
   check_condition(ls, vkisvar(lh->v.k), "syntax error");
+  // 是否多个变量
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
+    // 处理后缀表达式
     suffixedexp(ls, &nv.v);
+    // 不是数组索引
     if (nv.v.k != VINDEXED)
       check_conflict(ls, lh, &nv.v);
+    // 检测调用深度
     checklimit(ls->fs, nvars + ls->L->nCcalls, LUAI_MAXCCALLS,
                     "C levels");
+    // 处理赋值表达式
     assignment(ls, &nv, nvars+1);
   }
+  // = 表达式列表
   else {  /* assignment -> '=' explist */
     int nexps;
+    // 跳过等于号
     checknext(ls, '=');
+    // 解析表达式列表
     nexps = explist(ls, &e);
+    // 如果变量的数目和表达式的数目不相等，需要调整赋值
     if (nexps != nvars)
       adjust_assign(ls, nvars, nexps, &e);
     else {
+      // 关闭最后的表达式
       luaK_setoneret(ls->fs, &e);  /* close last expression */
+      // 保存变量
       luaK_storevar(ls->fs, &lh->v, &e);
       return;  /* avoid default */
     }
   }
+  // 默认的赋值
   init_exp(&e, VNONRELOC, ls->fs->freereg-1);  /* default assignment */
+  // 保存变量
   luaK_storevar(ls->fs, &lh->v, &e);
 }
 
@@ -1536,26 +1560,33 @@ static void checkrepeated (FuncState *fs, Labellist *ll, TString *label) {
 
 
 /* skip no-op statements */
+// 跳过无操作的语句
 static void skipnoopstat (LexState *ls) {
   while (ls->t.token == ';' || ls->t.token == TK_DBCOLON)
     statement(ls);
 }
 
-
+// 解析标签语句
 static void labelstat (LexState *ls, TString *label, int line) {
   /* label -> '::' NAME '::' */
   FuncState *fs = ls->fs;
   Labellist *ll = &ls->dyd->label;
   int l;  /* index of new label being created */
+  // 建议释放有重名的标签
   checkrepeated(fs, ll, label);  /* check for repeated labels */
+  // 跳过双引号
   checknext(ls, TK_DBCOLON);  /* skip double colon */
   /* create new entry for this label */
+  // 创建一个新的标签
   l = newlabelentry(ls, ll, label, line, luaK_getlabel(fs));
+  // 跳过无操作的语句
   skipnoopstat(ls);  /* skip other no-op statements */
+  // 检查当前令牌是否在块的后续代码块中 
   if (block_follow(ls, 0)) {  /* label is last no-op statement in the block? */
     /* assume that locals are already out of scope */
     ll->arr[l].nactvar = fs->bl->nactvar;
   }
+  // 查找新建的标签是否为未解决的跳转标签 
   findgotos(ls, &ll->arr[l]);
 }
 
@@ -1910,52 +1941,68 @@ static void funcstat(LexState* ls, int line) {
   luaK_fixline(ls->fs, line);  /* definition "happens" in the first line */
 }
 
-
+// 赋值表达和函数调用
 static void exprstat (LexState *ls) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
   struct LHS_assign v;
+  // 处理后缀表达式
   suffixedexp(ls, &v.v);
+  // 是赋值
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
     v.prev = NULL;
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */
+    // 函数调用
     check_condition(ls, v.v.k == VCALL, "syntax error");
     SETARG_C(getinstruction(fs, &v.v), 1);  /* call statement uses no results */
   }
 }
 
-
+// 返回（return）语句处理
 static void retstat (LexState *ls) {
   /* stat -> RETURN [explist] [';'] */
   FuncState *fs = ls->fs;
   expdesc e;
   int first, nret;  /* registers with returned values */
+  // 处理没用返回值的情况，直接是return或者return;
   if (block_follow(ls, 1) || ls->t.token == ';')
     first = nret = 0;  /* return no values */
   else {
+    // 得到返回表达式列表和返回数目
     nret = explist(ls, &e);  /* optional return values */
+    // 不固定数目返回参数
     if (hasmultret(e.k)) {
       luaK_setmultret(fs, &e);
+      // 尾调用
       if (e.k == VCALL && nret == 1) {  /* tail call? */
         SET_OPCODE(getinstruction(fs,&e), OP_TAILCALL);
         lua_assert(GETARG_A(getinstruction(fs,&e)) == fs->nactvar);
       }
+      // 第一个返回值
       first = fs->nactvar;
+      // 返回多个
       nret = LUA_MULTRET;  /* return all values */
     }
+    // 固定数目
     else {
+      // 只有一个返回值，放入寄存器
       if (nret == 1)  /* only one single value? */
         first = luaK_exp2anyreg(fs, &e);
       else {
+        // 返回值放入堆栈
         luaK_exp2nextreg(fs, &e);  /* values must go to the stack */
+        // 第一个返回值
         first = fs->nactvar;  /* return all active values */
+        // 校验返回值的数目
         lua_assert(nret == fs->freereg - first);
       }
     }
   }
+  // 编码一个返回指令
   luaK_ret(fs, first, nret);
+  // 跳过可选的分号;
   testnext(ls, ';');  /* skip optional semicolon */
 }
 
@@ -2018,23 +2065,28 @@ static void statement (LexState *ls) {
         localstat(ls);
       break;
     }
-    // 
+    // 双引号
     case TK_DBCOLON: {  /* stat -> label */
       luaX_next(ls);  /* skip double colon */
+      // 取得标签名，解析标签语句
       labelstat(ls, str_checkname(ls), line);
       break;
     }
+    // 返回（return）语句处理
     case TK_RETURN: {  /* stat -> retstat */
+      // 跳过return
       luaX_next(ls);  /* skip RETURN */
       retstat(ls);
       break;
     }
+    // break和go to 语句处理
     case TK_BREAK:   /* stat -> breakstat */
     case TK_GOTO: {  /* stat -> 'goto' NAME */
       gotostat(ls, luaK_jump(ls->fs));
       break;
     }
     default: {  /* stat -> func | assignment */
+      // 函数调用或者赋值
       exprstat(ls);
       break;
     }
@@ -2067,7 +2119,9 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   luaX_next(ls);  /* read first token */
   // 分析main函数体
   statlist(ls);  /* parse main body */
+  // 最后的结束token
   check(ls, TK_EOS);
+  // 函数结束处理 
   close_func(ls);
 }
 
@@ -2094,6 +2148,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lexstate.dyd = dyd;
   dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;
   luaX_setinput(L, &lexstate, z, funcstate.f->source, firstchar);
+  // 解析整个文件
   mainfunc(&lexstate, &funcstate);
   lua_assert(!funcstate.prev && funcstate.nups == 1 && !lexstate.fs);
   /* all scopes should be correctly finished */
