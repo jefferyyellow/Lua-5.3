@@ -817,6 +817,7 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* execute a jump instruction */
+// 执行一个跳转指令
 #define dojump(ci,i,e) \
   { int a = GETARG_A(i); \
     if (a != 0) luaF_close(L, ci->u.l.base + a - 1); \
@@ -1027,201 +1028,276 @@ void luaV_execute (lua_State *L) {
         else Protect(luaV_finishget(L, rb, rc, ra, aux));
         vmbreak;
       }
+      // R(A) := RK(B) + RK(C)
+      // 将B，C 索引所对应的值相加放到寄存器A中，这里可以看到B,C可能是寄存器的索引也
+      // 可能是常量表里的索引，在Lua中可以用ISK宏来判断是否是寄存器的值
       vmcase(OP_ADD) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // rb和rc都是整数，就按照整数+整数的方式
         if (ttisinteger(rb) && ttisinteger(rc)) {
           lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
           setivalue(ra, intop(+, ib, ic));
         }
+        // 将rb和rc转换为number，然后相加
         else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_numadd(L, nb, nc));
         }
+        // 尝试调用加的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_ADD)); }
         vmbreak;
       }
+      // R(A) := RK(B) - RK(C)
+	  // 将B，C 索引所对应的值相减放到寄存器A中，这里可以看到B,C可能是寄存器的索引也
+	  // 可能是常量表里的索引，在Lua中可以用ISK宏来判断是否是寄存器的值
       vmcase(OP_SUB) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // rb和rc都是整数，就按照整数-整数的方式
         if (ttisinteger(rb) && ttisinteger(rc)) {
           lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
           setivalue(ra, intop(-, ib, ic));
         }
+        // 将rb和rc转换为number，然后相减
         else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_numsub(L, nb, nc));
         }
+        // 尝试调用减的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_SUB)); }
         vmbreak;
       }
+      // R(A) := RK(B) * RK(C)
+	  // 将B，C 索引所对应的值相乘放到寄存器A中，这里可以看到B,C可能是寄存器的索引也
+	  // 可能是常量表里的索引，在Lua中可以用ISK宏来判断是否是寄存器的值
       vmcase(OP_MUL) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // rb和rc都是整数，就按照整数 * 整数的方式
         if (ttisinteger(rb) && ttisinteger(rc)) {
           lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
           setivalue(ra, intop(*, ib, ic));
         }
+        // 将rb和rc转换为number，然后相乘
         else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_nummul(L, nb, nc));
         }
+        // 尝试调用乘的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_MUL)); }
         vmbreak;
       }
+      // R(A) := RK(B) / RK(C)
+      // 总是使用浮点除法，
+	  // 将B，C 索引所对应的值相除放到寄存器A中，这里可以看到B,C可能是寄存器的索引也
+	  // 可能是常量表里的索引，在Lua中可以用ISK宏来判断是否是寄存器的值
       vmcase(OP_DIV) {  /* float division (always with floats) */
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // 将rb和rc转换为number，然后相除
         if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_numdiv(L, nb, nc));
         }
+        // 尝试调用除的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_DIV)); }
         vmbreak;
       }
+      // R(A) := RK(B) & RK(C) （按位与）操作，只有整数才能做按位与的操作
       vmcase(OP_BAND) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Integer ib; lua_Integer ic;
+        // 将rb和rc转换为整数，然后按位与
         if (tointeger(rb, &ib) && tointeger(rc, &ic)) {
           setivalue(ra, intop(&, ib, ic));
         }
+        // 尝试调用按位与的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_BAND)); }
         vmbreak;
       }
+      // R(A) := RK(B) | RK(C)
+      // 按位（或）操作，只有整数才能做按位或的操作
       vmcase(OP_BOR) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Integer ib; lua_Integer ic;
+        // 将rb和rc转换为整数，然后按位或
         if (tointeger(rb, &ib) && tointeger(rc, &ic)) {
           setivalue(ra, intop(|, ib, ic));
         }
+        // 尝试调用按位或的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_BOR)); }
         vmbreak;
       }
+      // R(A) := RK(B) ~ RK(C)
+      // （按位异或）操作,只有整数才能做按位异或的操作
       vmcase(OP_BXOR) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Integer ib; lua_Integer ic;
+        // 将rb和rc转换为整数，然后按位异或
         if (tointeger(rb, &ib) && tointeger(rc, &ic)) {
           setivalue(ra, intop(^, ib, ic));
         }
+        // 尝试调用按位异或的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_BXOR)); }
         vmbreak;
       }
+      // R(A) := RK(B) << RK(C),左移）操作,只有整数才能做左移的操作
       vmcase(OP_SHL) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Integer ib; lua_Integer ic;
+        // 将rb和rc转换为整数，然后左移
         if (tointeger(rb, &ib) && tointeger(rc, &ic)) {
           setivalue(ra, luaV_shiftl(ib, ic));
         }
+        // 尝试调用左移的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHL)); }
         vmbreak;
       }
+      // R(A) := RK(B) >> RK(C)，右移操作，只有整数才能做右移的操作
       vmcase(OP_SHR) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Integer ib; lua_Integer ic;
+        // 将rb和rc转换为整数，然后右移
         if (tointeger(rb, &ib) && tointeger(rc, &ic)) {
           setivalue(ra, luaV_shiftl(ib, -ic));
         }
+        // 尝试调用右移的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_SHR)); }
         vmbreak;
       }
+      // R(A) := RK(B) % RK(C)
       vmcase(OP_MOD) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // 如果rb和rc为整数，转换后取模
         if (ttisinteger(rb) && ttisinteger(rc)) {
           lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
           setivalue(ra, luaV_mod(L, ib, ic));
         }
+        // 如果rb和rc可以转换为number，进行浮点取模
         else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           lua_Number m;
           luai_nummod(L, nb, nc, m);
           setfltvalue(ra, m);
         }
+        // 尝试调用取余的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_MOD)); }
         vmbreak;
       }
+      // R(A) := RK(B) // RK(C)  向下取整除法操作
       vmcase(OP_IDIV) {  /* floor division */
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // 如果rb和rc为整数，转换后相除
         if (ttisinteger(rb) && ttisinteger(rc)) {
           lua_Integer ib = ivalue(rb); lua_Integer ic = ivalue(rc);
           setivalue(ra, luaV_div(L, ib, ic));
         }
+        // 如果rb和rc可以转换为number，进行浮点除法，然后再floor
         else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_numidiv(L, nb, nc));
         }
+        // 尝试调用向下取整除法的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_IDIV)); }
         vmbreak;
       }
+      // R(A) := RK(B) ^ RK(C) (^（次方）操作)
       vmcase(OP_POW) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         lua_Number nb; lua_Number nc;
+        // 如果rb和rc可以转换为number，进行次方
         if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
           setfltvalue(ra, luai_numpow(L, nb, nc));
         }
+        // 尝试调用次方的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_POW)); }
         vmbreak;
       }
+      // R(A) := -R(B) (-（取负）操作)
       vmcase(OP_UNM) {
         TValue *rb = RB(i);
         lua_Number nb;
+        // 如果rb为整数，使用ra = 0 - rb的方式
         if (ttisinteger(rb)) {
           lua_Integer ib = ivalue(rb);
           setivalue(ra, intop(-, 0, ib));
         }
+        // 如果rb能转换成number，直接取负号
         else if (tonumber(rb, &nb)) {
           setfltvalue(ra, luai_numunm(L, nb));
         }
         else {
+          // 尝试调用取负的元方法
           Protect(luaT_trybinTM(L, rb, rb, ra, TM_UNM));
         }
         vmbreak;
       }
+      // R(A) := ~R(B)（按位非）操作,只有整数才能做按位非的操作
       vmcase(OP_BNOT) {
         TValue *rb = RB(i);
         lua_Integer ib;
+        // 如果rb为整数，c语言里“^”按位异或运算符
         if (tointeger(rb, &ib)) {
+          // ~l_castS2U(0)相当于得到所有位都为1的整数，然后和ib异或
           setivalue(ra, intop(^, ~l_castS2U(0), ib));
         }
         else {
+          // 尝试调用按位非的元方法
           Protect(luaT_trybinTM(L, rb, rb, ra, TM_BNOT));
         }
         vmbreak;
       }
+      // R(A) := not R(B) 取反操作 not 总是返回 false 或 true 中的一个
       vmcase(OP_NOT) {
         TValue *rb = RB(i);
+        // 是否为false，如果rb为true,就会返回false，如果rb为false，就会返回true,
+        // 通过这种方式取反
         int res = l_isfalse(rb);  /* next assignment may change this value */
         setbvalue(ra, res);
         vmbreak;
       }
+      // R(A) := length of R(B)(#（取长度）操作)
       vmcase(OP_LEN) {
+        // 获取obj的长度
         Protect(luaV_objlen(L, ra, RB(i)));
         vmbreak;
       }
+      // A B C	R(A) := R(B).. ... ..R(C)	（连接多个字符串）
       vmcase(OP_CONCAT) {
         int b = GETARG_B(i);
         int c = GETARG_C(i);
         StkId rb;
+        // 设置栈顶
         L->top = base + c + 1;  /* mark the end of concat operands */
+        // 设置连接字符串的数目
         Protect(luaV_concat(L, c - b + 1));
+        // luaV_concat可能会调用元方法或移动栈
         ra = RA(i);  /* 'luaV_concat' may invoke TMs and move the stack */
+        // 得到b的地址，连接后的元素最后在rb上
         rb = base + b;
+        // 将rb = rb
         setobjs2s(L, ra, rb);
         checkGC(L, (ra >= rb ? ra + 1 : rb));
+        // 恢复栈
         L->top = ci->top;  /* restore top */
         vmbreak;
       }
+      // 跳转指令
       vmcase(OP_JMP) {
+        // 执行跳转指令
         dojump(ci, i, 0);
         vmbreak;
       }
+      // if ((RK(B) == RK(C)) ~= A) then pc++
       vmcase(OP_EQ) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);

@@ -134,7 +134,7 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
   }
 }
 
-
+// 调用元方法
 int luaT_callbinTM (lua_State *L, const TValue *p1, const TValue *p2,
                     StkId res, TMS event) {
   // 取p1的元方法，没有的话取p2的元方法
@@ -147,17 +147,22 @@ int luaT_callbinTM (lua_State *L, const TValue *p1, const TValue *p2,
   return 1;
 }
 
-
+// 尝试进行元方法计算
 void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
                     StkId res, TMS event) {
+    // 尝试调用值类型本身的元方法，如果没有继续
   if (!luaT_callbinTM(L, p1, p2, res, event)) {
+      // 根据不同的事件
     switch (event) {
+        // 连接
       case TM_CONCAT:
+          // 包连接错误
         luaG_concaterror(L, p1, p2);
       /* call never returns, but to avoid warnings: *//* FALLTHROUGH */
       case TM_BAND: case TM_BOR: case TM_BXOR:
       case TM_SHL: case TM_SHR: case TM_BNOT: {
         lua_Number dummy;
+        // 都能够转换为num，报不能转换为int的错
         if (tonumber(p1, &dummy) && tonumber(p2, &dummy))
           luaG_tointerror(L, p1, p2);
         else

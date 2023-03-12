@@ -44,8 +44,9 @@
 #define tointeger(o,i) \
     (ttisinteger(o) ? (*(i) = ivalue(o), 1) : luaV_tointeger(o,i,LUA_FLOORN2I))
 
+// 操作符操作整数得到对应的结果
 #define intop(op,v1,v2) l_castU2S(l_castS2U(v1) op l_castS2U(v2))
-
+// 原始的相等比较
 #define luaV_rawequalobj(t1,t2)		luaV_equalobj(NULL,t1,t2)
 
 

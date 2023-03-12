@@ -119,6 +119,7 @@ typedef LUAI_UACINT l_uacInt;
 
 
 /* cast a signed lua_Integer to lua_Unsigned */
+// 从一个带符号的lua_Integer转换到不带符号的lua_Unsigned
 #if !defined(l_castS2U)
 #define l_castS2U(i)	((lua_Unsigned)(i))
 #endif
