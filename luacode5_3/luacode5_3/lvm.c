@@ -143,22 +143,36 @@ again:
 ** the extreme case when the initial value is LUA_MININTEGER, in which
 ** case the LUA_MININTEGER limit would still run the loop once.
 */
+// 尝试将for循环语句的限制转换为整数，保留循环的语意。（下面的解释假定一个非负的步长；
+// 对于负数步长需要作必要的小修改才能奏效）
+// 如果限制能转换为整数，将其向下取整。否则，查看限制释放能转换为浮点数。如果数字太大，
+// 将其限制为 LUA_MAXINTEGER，表示没用限制。如果该值为绝对值最大的负数，循环就不应该运行，
+// 因为任何初始化整数的值都比限制大。因此将其设置为LUA_MININTEGER。stopnow纠正了初始值为
+// LUA_MININTEGER的极限情况，在LUA_MININTEGER为限制的情况下，仍然会运行一次循环。
 static int forlimit (const TValue *obj, lua_Integer *p, lua_Integer step,
                      int *stopnow) {
+  // 一般情况下不会设置stopnow,
   *stopnow = 0;  /* usually, let loops run */
+  // 不能转换为整数
   if (!luaV_tointeger(obj, p, (step < 0 ? 2 : 1))) {  /* not fit in integer? */
     lua_Number n;  /* try to convert to float */
+    // 不能转换为浮点数，就不是一个数字，返回0
     if (!tonumber(obj, &n)) /* cannot convert to float? */
       return 0;  /* not a number */
+    // 如果浮点数大于最大的整数
     if (luai_numlt(0, n)) {  /* if true, float is larger than max integer */
       *p = LUA_MAXINTEGER;
+      // 如果步长为负数，只运行一次循环
       if (step < 0) *stopnow = 1;
     }
     else {  /* float is smaller than min integer */
+      // 如果浮点数小于最小的整数
       *p = LUA_MININTEGER;
+      // 如果步长大于等于0，只运行一次循环
       if (step >= 0) *stopnow = 1;
     }
   }
+  // 转换成功，返回1
   return 1;
 }
 
@@ -413,7 +427,7 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 ** about it (to negate the result of r<l); bit CIST_LEQ in the call
 ** status keeps that information.
 */
-// 小于等于的主要操作；return 'l <= 4',如果他需要一个元方法并且没有__le，试着使用__lt
+// 小于等于的主要操作；return 'l <= r',如果他需要一个元方法并且没有__le，试着使用__lt
 // 基于 l <= r (r < l)(假设在一个总的顺序下）
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   int res;
@@ -824,6 +838,7 @@ void luaV_finishOp (lua_State *L) {
     ci->u.l.savedpc += GETARG_sBx(i) + e; }
 
 /* for test instructions, execute the jump instruction that follows it */
+// 执行测试指令后面的跳转指令
 #define donextjump(ci)	{ i = *ci->u.l.savedpc; dojump(ci, i, 1); }
 
 
@@ -862,6 +877,7 @@ void luaV_finishOp (lua_State *L) {
 
 
 /* same for 'luaV_settable' */
+// 
 #define settableProtected(L,t,k,v) { const TValue *slot; \
   if (!luaV_fastset(L,t,k,slot,luaH_get,v)) \
     Protect(luaV_finishset(L,t,k,v,slot)); }
@@ -1208,7 +1224,7 @@ void luaV_execute (lua_State *L) {
         // 尝试调用向下取整除法的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_IDIV)); }
         vmbreak;
-      }
+      }正
       // R(A) := RK(B) ^ RK(C) (^（次方）操作)
       vmcase(OP_POW) {
         TValue *rb = RKB(i);
@@ -1298,150 +1314,226 @@ void luaV_execute (lua_State *L) {
         vmbreak;
       }
       // if ((RK(B) == RK(C)) ~= A) then pc++
+      // 等于测试
       vmcase(OP_EQ) {
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
+		// 如果rb == rc的比较结果和ra不一致，不符合跳转的条件，执行下一条指令
+        // 那就下一条指令
         Protect(
           if (luaV_equalobj(L, rb, rc) != GETARG_A(i))
             ci->u.l.savedpc++;
           else
+            // 符合跳转的条件
             donextjump(ci);
         )
         vmbreak;
       }
+      // if ((RK(B) <  RK(C)) ~= A) then pc++
+      // 小于测试
       vmcase(OP_LT) {
+        // 如果rb < rc的比较结果和ra不一致，不符合跳转的条件，执行下一条指令
         Protect(
           if (luaV_lessthan(L, RKB(i), RKC(i)) != GETARG_A(i))
             ci->u.l.savedpc++;
           else
+            // 符合条件的跳转
             donextjump(ci);
         )
         vmbreak;
       }
+      // if ((RK(B) <= RK(C)) ~= A) then pc++
+      // 小于等于测试
       vmcase(OP_LE) {
         Protect(
+          // 如果rb <= rc的比较结果和ra不一致，不符合跳转的条件，执行下一条指令
           if (luaV_lessequal(L, RKB(i), RKC(i)) != GETARG_A(i))
             ci->u.l.savedpc++;
           else
+            // 符合条件的跳转
             donextjump(ci);
         )
         vmbreak;
       }
+      // if not (R(A) <=> C) then pc++	
+      // bool测试或者条件判定
       vmcase(OP_TEST) {
+        // 根据rc的不同值来判定ra为false还是true，判定是否满足跳转，不满足就执行下一条指令
         if (GETARG_C(i) ? l_isfalse(ra) : !l_isfalse(ra))
             ci->u.l.savedpc++;
           else
+          // 符合条件的跳转
           donextjump(ci);
         vmbreak;
       }
+      // if (R(B) <=> C) then R(A) := R(B) else pc++	
+      // bool测试或者条件判定
       vmcase(OP_TESTSET) {
         TValue *rb = RB(i);
+        // 根据rc的不同值来判定ra为false还是true，判定是否满足跳转，不满足就执行下一条指
         if (GETARG_C(i) ? l_isfalse(rb) : !l_isfalse(rb))
           ci->u.l.savedpc++;
         else {
+          // 满足条件将ra = rb，并且作符合条件的跳转
           setobjs2s(L, ra, rb);
           donextjump(ci);
         }
         vmbreak;
       }
+      // R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1))
+      // 
       vmcase(OP_CALL) {
         int b = GETARG_B(i);
+        // rc保存了返回值数目
         int nresults = GETARG_C(i) - 1;
+        // rb表示参数的的数目，如果b为0，表示上一条指令已经设置了top
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+        // C 函数
+        // ra表示函数
         if (luaD_precall(L, ra, nresults)) {  /* C function? */
+          // 如果有返回值，调整返回值
           if (nresults >= 0)
             L->top = ci->top;  /* adjust results */
           Protect((void)0);  /* update 'base' */
         }
+        // lua函数
         else {  /* Lua function */
           ci = L->ci;
+          // 在新的Lua函数上重启 luaV_execute
           goto newframe;  /* restart luaV_execute over new Lua function */
         }
         vmbreak;
       }
+      // return R(A)(R(A+1), ... ,R(A+B-1)) 尾调用
       vmcase(OP_TAILCALL) {
         int b = GETARG_B(i);
+        // rb表示参数的的数目，如果b为0，表示上一条指令已经设置了top
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
+        // 不定返回值
         lua_assert(GETARG_C(i) - 1 == LUA_MULTRET);
+        // C函数调用
         if (luaD_precall(L, ra, LUA_MULTRET)) {  /* C function? */
           Protect((void)0);  /* update 'base' */
         }
         else {
           /* tail call: put called frame (n) in place of caller one (o) */
+          // 尾调用：将被调用的帧 (n) 放在调用者一 (o) 的位置
+          // 取出调用者和被调用者的栈帧和函数
           CallInfo *nci = L->ci;  /* called frame */
           CallInfo *oci = nci->previous;  /* caller frame */
           StkId nfunc = nci->func;  /* called function */
           StkId ofunc = oci->func;  /* caller function */
           /* last stack slot filled by 'precall' */
+          // 最后一个栈槽被'precall'填充
           StkId lim = nci->u.l.base + getproto(nfunc)->numparams;
           int aux;
           /* close all upvalues from previous call */
+          // 关闭上次调用的所有upvalues
           if (cl->p->sizep > 0) luaF_close(L, oci->u.l.base);
           /* move new frame into old one */
+          // 移动新的栈帧到原来的里面
           for (aux = 0; nfunc + aux < lim; aux++)
             setobjs2s(L, ofunc + aux, nfunc + aux);
+          // 修正调用者的栈和保存的指令地址
           oci->u.l.base = ofunc + (nci->u.l.base - nfunc);  /* correct base */
           oci->top = L->top = ofunc + (L->top - nfunc);  /* correct top */
           oci->u.l.savedpc = nci->u.l.savedpc;
+          // 设置未尾调用模式
           oci->callstatus |= CIST_TAIL;  /* function was tail called */
+          // 删除新的栈帧
           ci = L->ci = oci;  /* remove new frame */
           lua_assert(L->top == oci->u.l.base + getproto(ofunc)->maxstacksize);
+          // 在新的Lua函数上重启 luaV_execute
           goto newframe;  /* restart luaV_execute over new Lua function */
         }
         vmbreak;
       }
+      // return R(A), ... ,R(A+B-2),返回指令
       vmcase(OP_RETURN) {
         int b = GETARG_B(i);
+        // 关闭所有upvalues
         if (cl->p->sizep > 0) luaF_close(L, base);
+        // 完成一个函数调用 
         b = luaD_poscall(L, ci, ra, (b != 0 ? b - 1 : cast_int(L->top - ra)));
+        // 局部变量'ci'仍然来自被调用者
         if (ci->callstatus & CIST_FRESH)  /* local 'ci' still from callee */
           return;  /* external invocation: return */
+        // 通过重入调用：继续执行
         else {  /* invocation via reentry: continue execution */
           ci = L->ci;
           if (b) L->top = ci->top;
           lua_assert(isLua(ci));
           lua_assert(GET_OPCODE(*((ci)->u.l.savedpc - 1)) == OP_CALL);
+          // 在新的Lua函数上重启 luaV_execute
           goto newframe;  /* restart luaV_execute over new Lua function */
         }
       }
+      // For循环
+	  // R(A)+=R(A+2);
+	  // if R(A) < ?= R(A + 1) then { pc += sBx; R(A + 3) = R(A) }*/
       vmcase(OP_FORLOOP) {
+        // 整数循环
         if (ttisinteger(ra)) {  /* integer loop? */
+          // 步长
           lua_Integer step = ivalue(ra + 2);
+          // 循环子
           lua_Integer idx = intop(+, ivalue(ra), step); /* increment index */
+          // 循环终止条件
           lua_Integer limit = ivalue(ra + 1);
+          // 如果满足循环条件
           if ((0 < step) ? (idx <= limit) : (limit <= idx)) {
+            // 跳回循环开始处
             ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
+            // ra = idx, 更新内部索引
             chgivalue(ra, idx);  /* update internal index... */
+            // (ra + 3) = idx, 更新外部索引
             setivalue(ra + 3, idx);  /* ...and external index */
           }
         }
+        // 浮点数循环
         else {  /* floating loop */
+          // 步长
           lua_Number step = fltvalue(ra + 2);
+          // 循环子
           lua_Number idx = luai_numadd(L, fltvalue(ra), step); /* inc. index */
+          // 循环终止条件
           lua_Number limit = fltvalue(ra + 1);
+          // 满足循环条件
           if (luai_numlt(0, step) ? luai_numle(idx, limit)
                                   : luai_numle(limit, idx)) {
+            // 跳回循环开始处
             ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
+            // 更新内外部循环
             chgfltvalue(ra, idx);  /* update internal index... */
             setfltvalue(ra + 3, idx);  /* ...and external index */
           }
         }
         vmbreak;
       }
+      // R(A)-=R(A+2); pc+=sBx	
+      // FORPREP初始化一个数字for循环，而FORLOOP执行一个数字for循环的迭代。
       vmcase(OP_FORPREP) {
+        // 初始值
         TValue *init = ra;
+        // 循环终止值
         TValue *plimit = ra + 1;
+        // 步长
         TValue *pstep = ra + 2;
         lua_Integer ilimit;
+        // 如果stopnow为1表示限制转换有问题，与步长不匹配，只运行一次
         int stopnow;
+        // 整数循环
         if (ttisinteger(init) && ttisinteger(pstep) &&
             forlimit(plimit, &ilimit, ivalue(pstep), &stopnow)) {
           /* all values are integer */
           lua_Integer initv = (stopnow ? 0 : ivalue(init));
+          // 设置限制和初始值
           setivalue(plimit, ilimit);
           setivalue(init, intop(-, initv, ivalue(pstep)));
         }
+        // 浮点数循环
         else {  /* try making all values floats */
+            // 尝试将所有的值转换为浮点数
           lua_Number ninit; lua_Number nlimit; lua_Number nstep;
           if (!tonumber(plimit, &nlimit))
             luaG_runerror(L, "'for' limit must be a number");
@@ -1451,81 +1543,125 @@ void luaV_execute (lua_State *L) {
           setfltvalue(pstep, nstep);
           if (!tonumber(init, &ninit))
             luaG_runerror(L, "'for' initial value must be a number");
+          // 设置初始值
           setfltvalue(init, luai_numsub(L, ninit, nstep));
         }
         ci->u.l.savedpc += GETARG_sBx(i);
         vmbreak;
       }
+      // OP_TFORCALL和OP_TFORLOOP这个两个指令实现了泛型for循环
+      // R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2));
+      // 它是iABC模式，A域指定迭代器函数的位置，B域不使用，C则指明了从迭代器函数中接收多少个返回值。执行它的时候，
+      // 如果我们的迭代器函数位于R(A)，那么此时，它会将迭代函数、迭代的table和当前迭代的key设置到
+      // R(A+3)~R(A+5)的位置上，
       vmcase(OP_TFORCALL) {
+        // ra+3调用的基准位置，拷贝一份出来
         StkId cb = ra + 3;  /* call base */
         setobjs2s(L, cb+2, ra+2);
         setobjs2s(L, cb+1, ra+1);
+        // ra为迭代器函数
         setobjs2s(L, cb, ra);
         L->top = cb + 3;  /* func. + 2 args (state and index) */
+        // 调用迭代器函数，rc表示返回值数目
         Protect(luaD_call(L, cb, GETARG_C(i)));
         L->top = ci->top;
+        // 继续下一条指令
         i = *(ci->u.l.savedpc++);  /* go to next instruction */
         ra = RA(i);
         lua_assert(GET_OPCODE(i) == OP_TFORLOOP);
         goto l_tforloop;
       }
+      // 泛型for循环
+      // if R(A+1) ~= nil then { R(A)=R(A+1); pc += sBx }
       vmcase(OP_TFORLOOP) {
-        l_tforloop:
+      l_tforloop:
+        // 是否继续循环
         if (!ttisnil(ra + 1)) {  /* continue loop? */
+          // 保存控制变量 ra= r(a+1)
           setobjs2s(L, ra, ra + 1);  /* save control variable */
+          // 跳转回到循环开始处
            ci->u.l.savedpc += GETARG_sBx(i);  /* jump back */
         }
         vmbreak;
       }
+      // R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B
+      // 以一个基地址和数量来将数据写入表的数组部分
       vmcase(OP_SETLIST) {
+        // rb为待写入数据的数量
         int n = GETARG_B(i);
+        // rc为FPF（也就是前面提到的LFIELDS_PER_FLUSH常量）索引，即每次写入最多是LFIELDS_PER_FLUSH
         int c = GETARG_C(i);
         unsigned int last;
         Table *h;
+        // 如果rb为零，直接取栈顶到ra的数目
         if (n == 0) n = cast_int(L->top - ra) - 1;
+        // 如果c为0，表示数目比较大，需要从下一条指令取出数目
         if (c == 0) {
           lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_EXTRAARG);
           c = GETARG_Ax(*ci->u.l.savedpc++);
         }
+        // 从ra取出表
         h = hvalue(ra);
+        // 得到最后需要设置得项
         last = ((c-1)*LFIELDS_PER_FLUSH) + n;
+        // 需要更大得空间
         if (last > h->sizearray)  /* needs more space? */
           luaH_resizearray(L, h, last);  /* preallocate it at once */
+        // 将值写入
         for (; n > 0; n--) {
           TValue *val = ra+n;
           luaH_setint(L, h, last--, val);
           luaC_barrierback(L, h, val);
         }
+        // 修正堆栈
         L->top = ci->top;  /* correct top (in case of previous open call) */
         vmbreak;
       }
+      // R(A) := closure(KPROTO[Bx])
+      // 当遇到函数定义是，会在函数定义位置生成一个OP_CLOSURE指令，其第一个参数表示
+      // 指令返回的Closure结构存放的寄存器编号，第二个参数表示该函数内定义的函数的编号。
       vmcase(OP_CLOSURE) {
+        // 得到函数原型
         Proto *p = cl->p->p[GETARG_Bx(i)];
         // 取缓存的Lua闭包
         LClosure *ncl = getcached(p, cl->upvals, base);  /* cached closure */
         // 找不到匹配的缓存
         if (ncl == NULL)  /* no match? */
-          // 创建一个新的
+          // 创建一个新的闭包
           pushclosure(L, p, cl->upvals, base, ra);  /* create a new one */
         else
+          // 设置lua闭包
           setclLvalue(L, ra, ncl);  /* push cashed closure */
         checkGC(L, ra + 1);
         vmbreak;
       }
+      // R(A), R(A+1), ..., R(A+B-2) 
+      // Lua为不定参数专门设计了一条指令：OP_VARARG A B ==> R(A), R(A+1), ..., R(A+B-2) = vararg，
+      // 每一次代码用采用”…"操作符获取不定参数时，都会生成这条指令（固定参数的值可被直接修改，
+      // 不定参数的值无法被直接修改，只能通过VARARG指令获取其副本）。另外，“…”操作符只有一个获取
+      // 不定参数副本的功能，无法通过该操作符来接收多个返回值。
       vmcase(OP_VARARG) {
+        // 要求的数目
         int b = GETARG_B(i) - 1;  /* required results */
         int j;
+        // 不定参数的数目
         int n = cast_int(base - ci->func) - cl->p->numparams - 1;
+        // 实际的参数比固定参数还少，没用可变参数
         if (n < 0)  /* less arguments than parameters? */
           n = 0;  /* no vararg arguments */
+        // 如果b小于0，表示接收所有的不定参数
         if (b < 0) {  /* B == 0? */
           b = n;  /* get all var. arguments */
+          // 栈空间是否能容纳n个参数
           Protect(luaD_checkstack(L, n));
           ra = RA(i);  /* previous call may change the stack */
+          // 增加栈空间
           L->top = ra + n;
         }
+        // 设置不定参数
         for (j = 0; j < b && j < n; j++)
           setobjs2s(L, ra + j, base - n + j);
+        // 如果要求的参数比实际参数多，需要将不足的填充为nil
         for (; j < b; j++)  /* complete required results with nil */
           setnilvalue(ra + j);
         vmbreak;
