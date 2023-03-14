@@ -556,6 +556,7 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       ci->nresults = nresults;
       ci->func = func;
       ci->u.l.base = base;
+      // 增加函数所需要的寄存器
       L->top = ci->top = base + fsize;
       lua_assert(ci->top <= L->stack_last);
 	  // 保存开始调用点

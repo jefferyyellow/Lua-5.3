@@ -1895,7 +1895,7 @@ static void localstat (LexState *ls) {
   } while (testnext(ls, ','));
   // 后面是否有初始化语句
   if (testnext(ls, '='))
-.   // 解析初始化语句
+   // 解析初始化语句
     nexps = explist(ls, &e);
   else {
     e.k = VVOID;

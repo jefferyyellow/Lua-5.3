@@ -46,7 +46,7 @@
 // upvalue的open与close状态在UpVal结构中不需要用一个标记位区分。
 // 因为当upvalue close时，UpVal中的v指针一定指向结构体内部的value。
 struct UpVal {
-  // 指向堆栈或者指向它自己的值
+  // 指向外层函数的local变量(open upvalue)，或者指向自己(upvalue关闭时) 
   TValue *v;  /* points to stack or to its own value */
   // 引用计数
   lu_mem refcount;  /* reference counter */

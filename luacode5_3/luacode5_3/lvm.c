@@ -32,6 +32,7 @@
 
 
 /* limit for table tag-method chains (to avoid loops) */
+// 表的标签-方法链的限制（防止循环）
 #define MAXTAGLOOP	2000
 
 
@@ -41,9 +42,12 @@
 ** float without rounding. Used in comparisons. Left undefined if
 ** all integers fit in a float precisely.
 */
+// 'l_intfitsf' 检查给定的整数是否可以在不四舍五入的情况下转换为浮点数。
+// 用于比较。 如果所有整数都精确地适合浮点数，则保留未定义。
 #if !defined(l_intfitsf)
 
 /* number of bits in the mantissa of a float */
+// 浮点数尾数的位数
 #define NBM		(l_mathlim(MANT_DIG))
 
 /*
@@ -53,9 +57,18 @@
 ** of an integer. In a worst case, NBM == 113 for long double and
 ** sizeof(integer) == 32.)
 */
+// 检查是否某些整数可能不适合浮点数，即是否 (maxinteger >> NBM) > 0（这意味着 (1 << NBM) <= maxinteger）。
+// （移位是分部分进行的，以避免移位超过整数的大小。在最坏的情况下，long double型的NBM == 113和sizeof(integer) == 32。）
+// 
+// IEEE 754 标准定义了各种数值类型的参数：https://en.wikipedia.org/wiki/IEEE_754 对于 128 位长的长双精度数，
+// 尾数（浮点数中包含有效数字的部分）为 113 位，因此它可以表示精度最高的整数 到 2^113 - 1。
+// 它可以表示更大的浮点数，但你开始失去精度，因为较低的阶数只是四舍五入。
+// 
+
 #if ((((LUA_MAXINTEGER >> (NBM / 4)) >> (NBM / 4)) >> (NBM / 4)) \
 	>> (NBM - (3 * (NBM / 4))))  >  0
 
+// 整数i是否在浮点数的尾数表示范围内
 #define l_intfitsf(i)  \
   (-((lua_Integer)1 << NBM) <= (i) && (i) <= ((lua_Integer)1 << NBM))
 
@@ -80,6 +93,7 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
   // 如果是字符串，转换成数字
   else if (cvt2num(obj) &&  /* string convertible to number? */
             luaO_str2num(svalue(obj), &v) == vslen(obj) + 1) {
+    // 将luaO_str2num的结果转换成浮点数
     *n = nvalue(&v);  /* convert result of 'luaO_str2num' to a float */
     return 1;
   }
@@ -105,11 +119,15 @@ again:
   if (ttisfloat(obj)) {
     lua_Number n = fltvalue(obj);
     lua_Number f = l_floor(n);
+    // 如果浮点数原来的值和向下取整的值不相等，表示不可以用整数来表示
     if (n != f) {  /* not an integral value? */
+      // 如果mode为0，不能用整数表示就返回0
       if (mode == 0) return 0;  /* fails if mode demands integral value */
+      // 如果mode>1，向上取整
       else if (mode > 1)  /* needs ceil? */
         f += 1;  /* convert floor to ceil (remember: n != f) */
     }
+    // 转换为整数
     return lua_numbertointeger(f, p);
   }
   // obj是整数类型，直接简单取值就行
@@ -287,22 +305,34 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
 ** and it uses 'strcoll' (to respect locales) for each segments
 ** of the strings.
 */
+// 比较字符串ls和rs，如果ls小于/等于/大于rs，就分别返回小于/等于/大于0的整数。
+// 该代码有点棘手，因为它允许在字符串中使用“\0”，并且它对字符串的每个段使用“strcoll”（以尊重语言环境）。
 static int l_strcmp (const TString *ls, const TString *rs) {
+  // 得到左右两边的字符串和字符串长度
   const char *l = getstr(ls);
   size_t ll = tsslen(ls);
   const char *r = getstr(rs);
   size_t lr = tsslen(rs);
+
+  // '\0'会将字符串分成多段
   for (;;) {  /* for each segment */
     int temp = strcoll(l, r);
+    // 不相等，直接返回
     if (temp != 0)  /* not equal? */
       return temp;  /* done */
+    // 字符串相等一直到‘\0’
     else {  /* strings are equal up to a '\0' */
+      //  两个字符串中第一个 '\0' 的索引
       size_t len = strlen(l);  /* index of first '\0' in both strings */
+      // 到'0'的索引和右边整个字符串的长度一致
       if (len == lr)  /* 'rs' is finished? */
+          // len就是左边整个字符串的长度，返回0(相等),或者左边的大
         return (len == ll) ? 0 : 1;  /* check 'ls' */
+      // 否则len的长度等于左边整个字符串的长度了，那右边的大，
       else if (len == ll)  /* 'ls' is finished? */
         return -1;  /* 'ls' is smaller than 'rs' ('rs' is not finished) */
       /* both strings longer than 'len'; go on comparing after the '\0' */
+      // 如果两个字符串都大于len，表示'\0'后面还有书籍，需要继续比较
       len++;
       l += len; ll -= len; r += len; lr -= len;
     }
@@ -320,17 +350,24 @@ static int l_strcmp (const TString *ls, const TString *rs) {
 ** truncated is irrelevant.) When 'f' is NaN, comparisons must result
 ** in false.
 */
+// 判断是否整数i小于浮点数f
 static int LTintfloat (lua_Integer i, lua_Number f) {
 #if defined(l_intfitsf)
+   // 如果超出了精度范围
   if (!l_intfitsf(i)) {
+     // 如果f大于最大的范围，返回1
     if (f >= -cast_num(LUA_MININTEGER))  /* -minint == maxint + 1 */
       return 1;  /* f >= maxint + 1 > i */
+    // 浮点数在整数的范围内
     else if (f > cast_num(LUA_MININTEGER))  /* minint < f <= maxint ? */
+        // 进行浮点数比较
       return (i < cast(lua_Integer, f));  /* compare them as integers */
+    // f小于最小的范围，返回0
     else  /* f <= minint <= i (or 'f' is NaN)  -->  not(i < f) */
       return 0;
   }
 #endif
+  // 进行浮点数比较
   return luai_numlt(cast_num(i), f);  /* compare them as floats */
 }
 
@@ -339,17 +376,24 @@ static int LTintfloat (lua_Integer i, lua_Number f) {
 ** Check whether integer 'i' is less than or equal to float 'f'.
 ** See comments on previous function.
 */
+// 判断是否整数i小于等于浮点数f
 static int LEintfloat (lua_Integer i, lua_Number f) {
 #if defined(l_intfitsf)
+    // 如果超出了精度范围
   if (!l_intfitsf(i)) {
+      // 如果f大于最大的范围，返回1
     if (f >= -cast_num(LUA_MININTEGER))  /* -minint == maxint + 1 */
       return 1;  /* f >= maxint + 1 > i */
+    // 浮点数在整数的范围内
     else if (f >= cast_num(LUA_MININTEGER))  /* minint <= f <= maxint ? */
+      // 浮点数比较
       return (i <= cast(lua_Integer, f));  /* compare them as integers */
+    // f小于最小的范围，返回0
     else  /* f < minint <= i (or 'f' is NaN)  -->  not(i <= f) */
       return 0;
   }
 #endif
+  // 精度范围内，直接转换为浮点比较
   return luai_numle(cast_num(i), f);  /* compare them as floats */
 }
 
@@ -357,21 +401,31 @@ static int LEintfloat (lua_Integer i, lua_Number f) {
 /*
 ** Return 'l < r', for numbers.
 */
+// 返回 l < r的结果
 static int LTnum (const TValue *l, const TValue *r) {
+    // 左边的为整数
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
+    // 如果右边也是整数
     if (ttisinteger(r))
+        // 整数比较
       return li < ivalue(r);  /* both are integers */
     else  /* 'l' is int and 'r' is float */
+      // 整数和浮点数比较
       return LTintfloat(li, fltvalue(r));  /* l < r ? */
   }
   else {
+      // l为浮点数
     lua_Number lf = fltvalue(l);  /* 'l' must be float */
+    // r为浮点数
     if (ttisfloat(r))
+        // 浮点数比较 
       return luai_numlt(lf, fltvalue(r));  /* both are float */
+    // lf为NAN
     else if (luai_numisnan(lf))  /* 'r' is int and 'l' is float */
       return 0;  /* NaN < i is always false */
     else  /* without NaN, (l < r)  <-->  not(r <= l) */
+      // 整数和浮点数比较
       return !LEintfloat(ivalue(r), lf);  /* not (r <= l) ? */
   }
 }
@@ -380,21 +434,29 @@ static int LTnum (const TValue *l, const TValue *r) {
 /*
 ** Return 'l <= r', for numbers.
 */
+// 返回l <= r的结果
 static int LEnum (const TValue *l, const TValue *r) {
+  // 整数
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
+    // 都是整数，进行整数比较
     if (ttisinteger(r))
       return li <= ivalue(r);  /* both are integers */
     else  /* 'l' is int and 'r' is float */
+        // 浮点数整数的比较
       return LEintfloat(li, fltvalue(r));  /* l <= r ? */
   }
   else {
     lua_Number lf = fltvalue(l);  /* 'l' must be float */
+    // 都是浮点数
     if (ttisfloat(r))
+        // 浮点数比较
       return luai_numle(lf, fltvalue(r));  /* both are float */
+    // NAN的比较
     else if (luai_numisnan(lf))  /* 'r' is int and 'l' is float */
       return 0;  /*  NaN <= i is always false */
     else  /* without NaN, (l <= r)  <-->  not(r < l) */
+        // 浮点数整数的比较
       return !LTintfloat(ivalue(r), lf);  /* not (r < l) ? */
   }
 }
@@ -473,6 +535,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     }
   }
   /* values have same type and same variant */
+  // 相同类型
   switch (ttype(t1)) {
     case LUA_TNIL: return 1;
     case LUA_TNUMINT: return (ivalue(t1) == ivalue(t2));
@@ -1224,7 +1287,7 @@ void luaV_execute (lua_State *L) {
         // 尝试调用向下取整除法的元方法
         else { Protect(luaT_trybinTM(L, rb, rc, ra, TM_IDIV)); }
         vmbreak;
-      }正
+      }
       // R(A) := RK(B) ^ RK(C) (^（次方）操作)
       vmcase(OP_POW) {
         TValue *rb = RKB(i);

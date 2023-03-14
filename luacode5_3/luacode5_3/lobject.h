@@ -396,6 +396,7 @@ typedef union UTString {
 #define tsslen(s)	((s)->tt == LUA_TSHRSTR ? (s)->shrlen : (s)->u.lnglen)
 
 /* get string length from 'TValue *o' */
+// 从TValue类型得到字符串的长度
 #define vslen(o)	tsslen(tsvalue(o))
 
 
@@ -443,9 +444,14 @@ typedef union UUdata {
 /*
 ** Description of an upvalue for function prototypes
 */
+// 函数原型的upvalue的描述(upvalue的编译描述)
 typedef struct Upvaldesc {
+  // upvalue的名字，用于调试信息
   TString *name;  /* upvalue name (for debug information) */
+  // 本函数的upvalue是否指向外层的栈（不是则指向外层函数的某个upvalue值）
+  // 1：表示在外面函数的堆栈上，0：表示在外层函数的upvalue列表中
   lu_byte instack;  /* whether it is in stack (register) */
+  // upvalue的索引(在栈或者外部的函数列表，根据in_stack确定)
   lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
 } Upvaldesc;
 
@@ -523,7 +529,7 @@ typedef struct UpVal UpVal;
 /*
 ** Closures
 */
-
+// nupvalues:记录Upvals列表的实际大小
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; GCObject *gclist
 // C闭包

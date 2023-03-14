@@ -444,6 +444,9 @@
 ** has an exact representation as a float; MAXINTEGER may not have one,
 ** and therefore its conversion to float may have an ill-defined value.)
 */
+// lua_numbertointeger转换一条浮点数到整数，如果浮点数不在lua_Integer的取值范围，就返回0.
+// 范围的比较由于圆整导致比较棘手。这里的测试假定是一个二进制补码的表示，MININTEGER总是有一个
+// 精确的浮点表示，而MAXINTEGER却没有，这会导致转换成浮点数会导致一个非法定义的值。
 #define lua_numbertointeger(n,p) \
   ((n) >= (LUA_NUMBER)(LUA_MININTEGER) && \
    (n) < -(LUA_NUMBER)(LUA_MININTEGER) && \
