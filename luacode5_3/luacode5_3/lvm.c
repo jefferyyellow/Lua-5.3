@@ -1099,9 +1099,12 @@ void luaV_execute (lua_State *L) {
         // 转换成string
         TString *key = tsvalue(rc);  /* key must be a string */
         // 参数B取出的寄存器的值赋值给参数A后面的寄存器
+        // rb就是表，将ra+1赋值为表
         setobjs2s(L, ra + 1, rb);
         //  参数B取出的寄存器是table,参数C取出来的当key,取出来的值设置到A指向的寄存器
         if (luaV_fastget(L, rb, key, aux, luaH_getstr)) {
+          // ra是表里面通过索引取出来的值，如果是函数的话，就会出现，
+          // ra是函数，ra+1是表，如果出现函数调用，那表就是函数的第一个参数
           setobj2s(L, ra, aux);
         }
         else Protect(luaV_finishget(L, rb, rc, ra, aux));

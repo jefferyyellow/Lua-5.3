@@ -736,6 +736,7 @@ void luaK_dischargevars (FuncState *fs, expdesc *e) {
 ** 'e' will become a non-relocatable expression).
 */
 // 确保表达式值在寄存器“reg”中（因此'e' 将成为不可重定位的表达式）。
+// 就是将指令涉及的值放入指定的寄存器中
 static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
   luaK_dischargevars(fs, e);
   // 表达式的值是常值, 这里生成指令并回填R(A) 
@@ -788,8 +789,9 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
 ** Ensures expression value is in any register.
 */
 // 保证表达式的值都在寄存器上 
+// 将指令表达式涉及的变量如果不在寄存器中，就放入最后一个空闲寄存器中
 static void discharge2anyreg (FuncState *fs, expdesc *e) {
-  // 如果还确定寄存器
+  // 如果还没确定寄存器
   if (e->k != VNONRELOC) {  /* no fixed register yet? */
     // 分配一个寄存器
     luaK_reserveregs(fs, 1);  /* get a register */
@@ -1013,9 +1015,10 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
   luaK_exp2anyreg(fs, e);
   ereg = e->u.info;  /* register where 'e' was placed */
   freeexp(fs, e);
+  // self的基础寄存器，也就是e的地址
   e->u.info = fs->freereg;  /* base register for op_self */
   e->k = VNONRELOC;  /* self expression has a fixed register */
-  // 为self和op_self预留寄存器
+  // 为函数和self预留寄存器
   luaK_reserveregs(fs, 2);  /* function and 'self' produced by op_self */
   // 写入字节码
   luaK_codeABC(fs, OP_SELF, e->u.info, ereg, luaK_exp2RK(fs, key));
